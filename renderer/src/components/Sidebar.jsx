@@ -11,7 +11,7 @@ export function Sidebar({ activeScreen, onSelectScreen, totalContacts, historyCo
     <aside className="sidebar">
       <div className="sidebar-brand">
         <p className="sidebar-tag">Rakuten-inspired desktop flow</p>
-        <h2>Envio de Cupons</h2>
+        <h2>Envio de Email</h2>
         <p>
           Operacao limpa, filas previsiveis e um ritmo de campanha pensado para listas grandes sem
           perder controle.

@@ -71,7 +71,7 @@ function createWindow() {
 app.whenReady().then(() => {
   loadEnvironment();
 
-  const database = new DatabaseService(path.join(app.getPath('userData'), 'envio-de-cupons.sqlite'));
+  const database = new DatabaseService(path.join(app.getPath('userData'), 'envio-de-email.sqlite'));
   database.initialize();
 
   const emailService = new EmailService({

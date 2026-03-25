@@ -1,5 +1,5 @@
 {
-  "name": "envio-de-cupons",
+  "name": "envio-de-email",
   "version": "1.0.0",
   "description": "Desktop bulk email sender for SendGrid campaigns.",
   "type": "module",
@@ -46,8 +46,8 @@
     "wait-on": "^8.0.5"
   },
   "build": {
-    "appId": "com.codex.enviodecupons",
-    "productName": "Envio de Cupons",
+    "appId": "com.codex.enviodeemail",
+    "productName": "Envio de Email",
     "files": [
       "main/**/*",
       "shared/**/*",

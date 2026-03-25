@@ -312,7 +312,7 @@ export function App() {
         <header className="workspace-header">
           <div>
             <p className="eyebrow">Bulk Email Sender</p>
-            <h1>Envio de Cupons</h1>
+            <h1>Envio de Email</h1>
             <p className="workspace-copy">
               Campanhas com SendGrid, lotes controlados, feedback em tempo real e limpeza consciente
               de dados sensiveis.

@@ -1,4 +1,4 @@
-# Envio de Cupons
+# Envio de Email
 
 Desktop app em Electron para envio massivo de emails com SendGrid, com filas robustas, preview local, importacao XLSX, historico em SQLite e dashboard em tempo real.
 
@@ -87,7 +87,7 @@ No app instalado, o `.env` pode ficar em qualquer um destes locais:
 
 - ao lado do executavel instalado
 - no diretório de onde o app foi iniciado
-- em `%APPDATA%\\Envio de Cupons\\.env`
+- em `%APPDATA%\\Envio de Email\\.env`
 
 ## Como rodar
 
@@ -112,7 +112,7 @@ npm run build
 Saidas esperadas:
 
 - `dist/release/win-unpacked/`
-- `dist/release/Envio de Cupons Setup 1.0.0.exe`
+- `dist/release/Envio de Email Setup 1.0.0.exe`
 
 Observacao: o build atual usa o icone padrao do Electron. Se quiser branding proprio, adicione um `icon.ico` e ajuste o `build.win` no `package.json`.
 

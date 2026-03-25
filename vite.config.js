@@ -4,6 +4,7 @@ import path from 'node:path';
 
 export default defineConfig({
   root: path.resolve(__dirname, 'renderer'),
+  base: './',
   plugins: [react()],
   server: {
     host: '127.0.0.1',
