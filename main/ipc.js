@@ -1,0 +1,244 @@
+import path from 'node:path';
+import fs from 'node:fs/promises';
+import { dialog, ipcMain } from 'electron';
+import { DEFAULT_SEND_CONFIG, DEFAULT_TEMPLATE_DRAFT } from '../shared/constants.js';
+import { parseContactsWorkbook, parseTemplateFile } from './services/fileParser.js';
+import { extractTemplateVariables, renderLocalTemplate } from './services/templateEngine.js';
+import { parseRecipientList, sanitizeText } from './services/validation.js';
+import { exportCampaignResultsCsv } from './services/reportService.js';
+
+function buildBootstrap(database) {
+  return {
+    contacts: database.listTempContacts(),
+    templateDraft: database.getTemplateDraft() || DEFAULT_TEMPLATE_DRAFT,
+    configDraft: database.getConfigDraft() || DEFAULT_SEND_CONFIG,
+    history: database.listCampaignHistory()
+  };
+}
+
+function toUiPreview(template, config, sampleContact) {
+  if (template.mode === 'sendgrid_dynamic') {
+    return {
+      type: 'remote_dynamic_template',
+      subject: config.subject || '',
+      html: '',
+      text: '',
+      notice:
+        'Templates dinamicos do SendGrid sao renderizados remotamente. O app mostra os dados enviados, nao o HTML final.'
+    };
+  }
+
+  const rendered = renderLocalTemplate({
+    template,
+    contact: sampleContact,
+    campaignConfig: config
+  });
+
+  return {
+    type: 'local_template',
+    ...rendered,
+    notice: ''
+  };
+}
+
+export function registerIpcHandlers({ database, queueManager }) {
+  ipcMain.handle('app:get-bootstrap', async () => buildBootstrap(database));
+
+  ipcMain.handle('contacts:import', async () => {
+    const selection = await dialog.showOpenDialog({
+      properties: ['openFile'],
+      filters: [{ name: 'Planilhas Excel', extensions: ['xlsx'] }]
+    });
+
+    if (selection.canceled || !selection.filePaths[0]) {
+      return null;
+    }
+
+    const parsedWorkbook = await parseContactsWorkbook(selection.filePaths[0]);
+    const contacts = database.replaceTempContacts(parsedWorkbook);
+
+    return {
+      summary: {
+        fileName: parsedWorkbook.fileName,
+        totalRows: parsedWorkbook.totalRows,
+        validRows: parsedWorkbook.validRows,
+        invalidRows: parsedWorkbook.invalidRows
+      },
+      contacts
+    };
+  });
+
+  ipcMain.handle('contacts:list', async () => database.listTempContacts());
+
+  ipcMain.handle('contacts:remove', async (_event, ids) => database.removeTempContacts(ids));
+
+  ipcMain.handle('contacts:exclude', async (_event, ids, excluded) =>
+    database.toggleTempContactExclusion(ids, excluded)
+  );
+
+  ipcMain.handle('contacts:clear', async () => {
+    database.clearTempContacts();
+    return [];
+  });
+
+  ipcMain.handle('template:import', async () => {
+    const selection = await dialog.showOpenDialog({
+      properties: ['openFile'],
+      filters: [{ name: 'Templates', extensions: ['html', 'eml'] }]
+    });
+
+    if (selection.canceled || !selection.filePaths[0]) {
+      return null;
+    }
+
+    const template = await parseTemplateFile(selection.filePaths[0]);
+    database.saveTemplateDraft(template);
+    return template;
+  });
+
+  ipcMain.handle('template:save', async (_event, template) => {
+    const nextTemplate = {
+      ...DEFAULT_TEMPLATE_DRAFT,
+      ...template,
+      variables:
+        template.mode === 'sendgrid_dynamic'
+          ? template.variables || []
+          : extractTemplateVariables(template.subject, template.html, template.text)
+    };
+
+    database.saveTemplateDraft(nextTemplate);
+    return nextTemplate;
+  });
+
+  ipcMain.handle('template:preview', async (_event, { template, config }) => {
+    const sampleContact = database.getEligibleContacts()[0] || {
+      email: config.senderEmail || 'preview@example.com',
+      name: 'Contato Exemplo',
+      variables: {}
+    };
+
+    return toUiPreview(template, config, sampleContact);
+  });
+
+  ipcMain.handle('config:save', async (_event, config) => {
+    const nextConfig = {
+      ...DEFAULT_SEND_CONFIG,
+      ...config
+    };
+    database.saveConfigDraft(nextConfig);
+    return nextConfig;
+  });
+
+  ipcMain.handle('campaign:send-test', async (_event, { config, template, recipientsText }) => {
+    const { recipients, errors } = parseRecipientList(recipientsText);
+    if (!recipients.length) {
+      throw new Error('Informe pelo menos um email de teste valido.');
+    }
+
+    if (errors.length) {
+      throw new Error(`Emails de teste invalidos: ${errors.join(', ')}`);
+    }
+
+    const sampleContact = database.getEligibleContacts()[0] || {
+      email: config.senderEmail,
+      name: 'Contato Teste',
+      variables: {}
+    };
+    const preview = toUiPreview(template, config, sampleContact);
+    const results = await queueManager.sendTest({
+      config,
+      template,
+      testRecipients: recipients,
+      sampleContact
+    });
+
+    return {
+      preview,
+      sampleContact,
+      results
+    };
+  });
+
+  ipcMain.handle('campaign:start', async (_event, { config, template }) => {
+    const contacts = database.getEligibleContacts();
+    if (queueManager.getCurrentCampaign()) {
+      throw new Error('Ja existe uma campanha em andamento.');
+    }
+
+    queueManager.emailService.validateConfig(config, template, contacts);
+    database.saveConfigDraft(config);
+    database.saveTemplateDraft(template);
+
+    queueManager.startCampaign({ config, template, contacts }).catch((error) => {
+      queueManager.emit('error', {
+        message: error.message,
+        createdAt: new Date().toISOString()
+      });
+    });
+
+    return {
+      started: true,
+      totalContacts: contacts.length
+    };
+  });
+
+  ipcMain.handle('campaign:pause', async () => {
+    queueManager.pauseCampaign();
+    return true;
+  });
+
+  ipcMain.handle('campaign:resume', async () => {
+    queueManager.resumeCampaign();
+    return true;
+  });
+
+  ipcMain.handle('campaign:cancel', async () => {
+    queueManager.cancelCampaign();
+    return true;
+  });
+
+  ipcMain.handle('campaign:history', async () => database.listCampaignHistory());
+
+  ipcMain.handle('campaign:results', async (_event, campaignId) => ({
+    results: database.listCampaignResults(campaignId),
+    logs: database.listCampaignLogs(campaignId),
+    history: database.listCampaignHistory().find((item) => item.id === campaignId) || null
+  }));
+
+  ipcMain.handle('campaign:purge-details', async (_event, campaignId) => {
+    database.purgeCampaignDetails(campaignId);
+    return database.listCampaignHistory();
+  });
+
+  ipcMain.handle('campaign:export-report', async (_event, campaignId) => {
+    const campaign = database.listCampaignHistory().find((item) => item.id === campaignId);
+    if (!campaign) {
+      throw new Error('Campanha nao encontrada.');
+    }
+
+    const results = database.listCampaignResults(campaignId);
+    if (!results.length) {
+      throw new Error('Nao ha detalhes suficientes para exportar este relatorio.');
+    }
+
+    const suggestedName = `relatorio-${sanitizeText(campaign.subject || campaignId, {
+      maxLength: 40
+    }).replace(/\s+/g, '-').toLowerCase() || campaignId}.csv`;
+
+    const selection = await dialog.showSaveDialog({
+      defaultPath: path.join(process.cwd(), suggestedName),
+      filters: [{ name: 'CSV', extensions: ['csv'] }]
+    });
+
+    if (selection.canceled || !selection.filePath) {
+      return null;
+    }
+
+    await exportCampaignResultsCsv(selection.filePath, campaign, results);
+    return selection.filePath;
+  });
+
+  ipcMain.handle('system:read-log-file', async (_event, filePath) => {
+    return fs.readFile(filePath, 'utf8');
+  });
+}
