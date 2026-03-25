@@ -50,6 +50,7 @@
     "productName": "Envio de Cupons",
     "files": [
       "main/**/*",
+      "shared/**/*",
       "dist/renderer/**/*",
       "package.json"
     ],

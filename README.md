@@ -83,6 +83,12 @@ SENDGRID_BASE_URL=https://api.sendgrid.com
 
 Use `https://api.eu.sendgrid.com` somente se a conta/subuser estiver configurada para envio regional na UE.
 
+No app instalado, o `.env` pode ficar em qualquer um destes locais:
+
+- ao lado do executavel instalado
+- no diretório de onde o app foi iniciado
+- em `%APPDATA%\\Envio de Cupons\\.env`
+
 ## Como rodar
 
 ```bash

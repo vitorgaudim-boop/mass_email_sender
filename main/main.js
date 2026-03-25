@@ -1,4 +1,5 @@
 import path from 'node:path';
+import fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { app, BrowserWindow, shell } from 'electron';
 import dotenv from 'dotenv';
@@ -7,8 +8,6 @@ import { EmailService } from './services/emailService.js';
 import { QueueManager } from './services/queueManager.js';
 import { registerIpcHandlers } from './ipc.js';
 
-dotenv.config();
-
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
@@ -16,6 +15,25 @@ let mainWindow = null;
 
 function getRendererPath() {
   return path.join(app.getAppPath(), 'dist', 'renderer', 'index.html');
+}
+
+function loadEnvironment() {
+  const candidatePaths = [
+    path.join(process.cwd(), '.env'),
+    path.join(path.dirname(app.getPath('exe')), '.env'),
+    path.join(app.getPath('userData'), '.env')
+  ];
+
+  for (const candidatePath of candidatePaths) {
+    if (!fs.existsSync(candidatePath)) {
+      continue;
+    }
+
+    dotenv.config({
+      path: candidatePath,
+      override: false
+    });
+  }
 }
 
 function createWindow() {
@@ -51,6 +69,8 @@ function createWindow() {
 }
 
 app.whenReady().then(() => {
+  loadEnvironment();
+
   const database = new DatabaseService(path.join(app.getPath('userData'), 'envio-de-cupons.sqlite'));
   database.initialize();
 
