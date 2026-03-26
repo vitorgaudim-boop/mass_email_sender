@@ -45,9 +45,10 @@ function createWindow() {
     backgroundColor: '#f7f1ef',
     autoHideMenuBar: true,
     webPreferences: {
-      preload: path.join(__dirname, 'preload.js'),
+      preload: path.join(__dirname, 'preload.cjs'),
       contextIsolation: true,
       nodeIntegration: false,
+      sandbox: false,
       webSecurity: true
     }
   });
