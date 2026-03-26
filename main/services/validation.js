@@ -1,5 +1,9 @@
 import validator from 'validator';
-import { DEFAULT_BRAND_LOGO_URL, DEFAULT_BRAND_NAME } from '../../shared/constants.js';
+import {
+  DEFAULT_BRAND_LOGO_URL,
+  DEFAULT_BRAND_LOGO_WHITE_URL,
+  DEFAULT_BRAND_NAME
+} from '../../shared/constants.js';
 
 export const RESERVED_HEADERS = new Set([
   'x-sg-id',
@@ -103,7 +107,12 @@ export function buildBrandVariables(config = {}) {
       sanitizeText(config.brandLogoUrl || DEFAULT_BRAND_LOGO_URL, {
         maxLength: 1000,
         allowEmpty: false
-      }) || DEFAULT_BRAND_LOGO_URL
+      }) || DEFAULT_BRAND_LOGO_URL,
+    brand_logo_white_url:
+      sanitizeText(DEFAULT_BRAND_LOGO_WHITE_URL, {
+        maxLength: 1000,
+        allowEmpty: false
+      }) || DEFAULT_BRAND_LOGO_WHITE_URL
   };
 }
 

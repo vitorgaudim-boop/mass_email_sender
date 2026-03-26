@@ -16,13 +16,6 @@ import {
   Undo2
 } from 'lucide-react';
 
-const FONT_OPTIONS = [
-  { label: 'Arial', value: 'Arial, Helvetica, sans-serif' },
-  { label: 'Verdana', value: 'Verdana, Geneva, sans-serif' },
-  { label: 'Tahoma', value: 'Tahoma, Geneva, sans-serif' },
-  { label: 'Trebuchet', value: "'Trebuchet MS', Arial, sans-serif" }
-];
-
 function sanitizeEditorHtml(html) {
   return DOMPurify.sanitize(html || '', {
     USE_PROFILES: { html: true }
@@ -53,7 +46,7 @@ function ToolbarButton({ label, icon, onClick }) {
   );
 }
 
-export function RichTextEditor({ value, onChange, availableFields = [] }) {
+export function RichTextEditor({ value, onChange, availableFields = [], fontFamily }) {
   const editorRef = useRef(null);
 
   const sanitizedValue = useMemo(() => sanitizeEditorHtml(value), [value]);
@@ -144,19 +137,6 @@ export function RichTextEditor({ value, onChange, availableFields = [] }) {
         </div>
 
         <div className="rich-editor-toolbar-group">
-          <select
-            className="rich-editor-select"
-            defaultValue={FONT_OPTIONS[0].value}
-            onMouseDown={(event) => event.preventDefault()}
-            onChange={(event) => runCommand('fontName', event.target.value)}
-          >
-            {FONT_OPTIONS.map((option) => (
-              <option key={option.label} value={option.value}>
-                {option.label}
-              </option>
-            ))}
-          </select>
-
           <input
             className="rich-editor-color"
             type="color"
@@ -189,6 +169,7 @@ export function RichTextEditor({ value, onChange, availableFields = [] }) {
         className="rich-editor-surface"
         contentEditable
         suppressContentEditableWarning
+        style={{ fontFamily }}
         data-placeholder="Escreva aqui o conteúdo do email. Você pode usar negrito, listas, links e variáveis."
         data-empty={editorIsEmpty ? 'true' : 'false'}
         onInput={emitChange}

@@ -5,6 +5,7 @@ import {
   BUILT_IN_TEMPLATES,
   createDraftFromPreset,
   DEFAULT_TEMPLATE_PRESET,
+  TEMPLATE_FONT_OPTIONS,
   syncTemplateDraft
 } from '../../../shared/templateCatalog.js';
 
@@ -17,7 +18,7 @@ function ShellThumb({ preset }) {
       >
         <div
           className="template-shell-thumb-logo"
-          style={{ background: 'rgba(255,255,255,0.92)' }}
+          style={{ background: preset.useWhiteLogo ? 'rgba(255,255,255,0.92)' : '#7b27c0' }}
         />
         <div
           className="template-shell-thumb-title"
@@ -244,6 +245,30 @@ export function TemplateStudio({
                   </label>
                 </div>
 
+                <div className="template-form-row">
+                  <label>
+                    <span>Fonte do template inteiro</span>
+                    <select
+                      className="input-field"
+                      value={templateDraft.composer?.fontFamily || TEMPLATE_FONT_OPTIONS[0].value}
+                      onChange={(event) => updateComposerField('fontFamily', event.target.value)}
+                    >
+                      {TEMPLATE_FONT_OPTIONS.map((option) => (
+                        <option key={option.value} value={option.value}>
+                          {option.label}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+
+                  <div className="note-block compact-note">
+                    <strong>Fonte global</strong>
+                    <p>
+                      A fonte escolhida aqui vale para título, subtítulo, corpo, botão e assinatura.
+                    </p>
+                  </div>
+                </div>
+
                 <section className="template-editor-panel">
                   <div className="template-editor-header">
                     <div>
@@ -259,6 +284,9 @@ export function TemplateStudio({
                     value={templateDraft.composer?.bodyHtml || ''}
                     onChange={(value) => updateComposerField('bodyHtml', value)}
                     availableFields={availableFields}
+                    fontFamily={
+                      templateDraft.composer?.fontFamily || TEMPLATE_FONT_OPTIONS[0].value
+                    }
                   />
                 </section>
 

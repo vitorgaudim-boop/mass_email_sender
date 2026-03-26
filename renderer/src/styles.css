@@ -754,6 +754,7 @@ textarea.input-field {
   width: 88px;
   height: 8px;
   border-radius: 999px;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.08);
 }
 
 .template-shell-thumb-title,
@@ -840,6 +841,7 @@ textarea.input-field {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 14px;
+  align-items: start;
 }
 
 .template-form-row-compact {
@@ -947,6 +949,51 @@ textarea.input-field {
   outline: none;
   line-height: 1.72;
   color: #2b2034;
+}
+
+.rich-editor-surface p,
+.rich-editor-surface li,
+.rich-editor-surface a,
+.rich-editor-surface h1,
+.rich-editor-surface h2,
+.rich-editor-surface h3,
+.rich-editor-surface h4,
+.rich-editor-surface blockquote {
+  font-family: inherit;
+}
+
+.rich-editor-surface p,
+.rich-editor-surface li {
+  font-size: 15px;
+}
+
+.rich-editor-surface h1,
+.rich-editor-surface h2,
+.rich-editor-surface h3 {
+  margin: 0 0 14px;
+  line-height: 1.18;
+  letter-spacing: -0.03em;
+}
+
+.rich-editor-surface h1 {
+  font-size: 2rem;
+}
+
+.rich-editor-surface h2 {
+  font-size: 1.55rem;
+}
+
+.rich-editor-surface h3 {
+  font-size: 1.28rem;
+}
+
+.rich-editor-surface ul,
+.rich-editor-surface ol {
+  padding-left: 20px;
+}
+
+.rich-editor-surface a {
+  color: var(--accent-deep);
 }
 
 .rich-editor-surface[data-empty='true']::before {

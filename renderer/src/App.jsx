@@ -8,7 +8,13 @@ import { DashboardScreen } from './components/DashboardScreen.jsx';
 import { ReportScreen } from './components/ReportScreen.jsx';
 
 const FINAL_STATUSES = new Set(['concluida', 'concluida_com_falhas', 'cancelada', 'interrompida']);
-const STATIC_TEMPLATE_FIELDS = ['email', 'name', 'brand_name', 'brand_logo_url'];
+const STATIC_TEMPLATE_FIELDS = [
+  'email',
+  'name',
+  'brand_name',
+  'brand_logo_url',
+  'brand_logo_white_url'
+];
 
 function buildAvailableFields(contacts) {
   const fieldSet = new Set(STATIC_TEMPLATE_FIELDS);

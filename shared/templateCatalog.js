@@ -1,5 +1,14 @@
 const DEFAULT_CTA_URL = 'https://rakutenadvertising.com/pt-br/';
+const DEFAULT_TEMPLATE_FONT_FAMILY = "'Segoe UI', Arial, Helvetica, sans-serif";
 const VARIABLE_PATTERN = /{{\s*[A-Za-z0-9_.-]+\s*}}/g;
+
+export const TEMPLATE_FONT_OPTIONS = [
+  { label: 'Segoe UI', value: "'Segoe UI', Arial, Helvetica, sans-serif" },
+  { label: 'Trebuchet MS', value: "'Trebuchet MS', Arial, sans-serif" },
+  { label: 'Verdana', value: 'Verdana, Geneva, sans-serif' },
+  { label: 'Tahoma', value: 'Tahoma, Geneva, sans-serif' },
+  { label: 'Arial', value: 'Arial, Helvetica, sans-serif' }
+];
 
 function escapeHtmlPreservingVariables(value) {
   const tokens = [];
@@ -23,13 +32,30 @@ function escapeHtmlPreservingVariables(value) {
   return escaped;
 }
 
-function normalizeRichBody(html) {
-  const trimmed = String(html ?? '').trim();
-  if (!trimmed) {
-    return '<p style="margin:0 0 16px; font-size:15px; line-height:1.72; color:#2b2034;">Escreva aqui o conteúdo do email.</p>';
-  }
+function removeInlineFontFamilyStyles(html) {
+  return String(html ?? '')
+    .replace(/\sface=(['"]).*?\1/gi, '')
+    .replace(/\sstyle=(['"])(.*?)\1/gi, (_, quote, content) => {
+      const keptRules = content
+        .split(';')
+        .map((rule) => rule.trim())
+        .filter(Boolean)
+        .filter((rule) => !rule.toLowerCase().startsWith('font-family'));
 
-  return trimmed;
+      return keptRules.length ? ` style=${quote}${keptRules.join('; ')}${quote}` : '';
+    });
+}
+
+function normalizeRichBody(html, fontFamily, bodyColor) {
+  const trimmed = removeInlineFontFamilyStyles(html).trim();
+  const fallback =
+    '<p style="margin:0 0 16px; font-size:15px; line-height:1.72;">Escreva aqui o conteúdo do email.</p>';
+
+  return `
+    <div style="font-family:${fontFamily}; color:${bodyColor};">
+      ${trimmed || fallback}
+    </div>
+  `;
 }
 
 function normalizeSignature(signature) {
@@ -37,27 +63,35 @@ function normalizeSignature(signature) {
 }
 
 function buildShellHtml(shell, composer) {
+  const fontFamily = composer.fontFamily || DEFAULT_TEMPLATE_FONT_FAMILY;
+  const logoSource = shell.useWhiteLogo ? '{{brand_logo_white_url}}' : '{{brand_logo_url}}';
   const eyebrowHtml = shell.eyebrow
     ? `
-      <p style="margin:0 0 12px; font-size:12px; line-height:1.4; letter-spacing:0.18em; text-transform:uppercase; color:${shell.eyebrowColor};">
+      <p style="margin:0 0 12px; font-size:12px; line-height:1.4; letter-spacing:0.18em; text-transform:uppercase; color:${shell.eyebrowColor}; font-family:${fontFamily};">
         ${shell.eyebrow}
       </p>
     `
     : '';
-
-  const logoHtml = `
-    <img
-      src="{{brand_logo_url}}"
-      alt="{{brand_name}}"
-      width="${shell.logoWidth}"
-      style="display:block; width:100%; max-width:${shell.logoWidth}px; height:auto; border:0; margin:${shell.logoMargin};"
-    />
-  `;
-
-  const introHtml = composer.intro
-    ? `<p style="margin:18px 0 0; font-size:15px; line-height:1.7; color:${shell.introColor};">${escapeHtmlPreservingVariables(composer.intro)}</p>`
+  const topAccentHtml = shell.topAccent
+    ? `<div style="height:${shell.topAccentHeight || '6px'}; background:${shell.topAccent};"></div>`
     : '';
-
+  const logoPlateHtml = `
+    <div style="display:inline-flex; align-items:center; justify-content:${shell.headerAlign === 'center' ? 'center' : 'flex-start'}; padding:${shell.logoPlatePadding || '0'}; border-radius:${shell.logoPlateRadius || '0'}; background:${shell.logoPlateBackground || 'transparent'}; box-shadow:${shell.logoPlateShadow || 'none'}; margin:${shell.logoPlateMargin || '0'};">
+      <img
+        src="${logoSource}"
+        alt="{{brand_name}}"
+        width="${shell.logoWidth}"
+        style="display:block; width:100%; max-width:${shell.logoWidth}px; height:auto; border:0;"
+      />
+    </div>
+  `;
+  const introHtml = composer.intro
+    ? `
+      <p style="margin:18px ${shell.headerAlign === 'center' ? 'auto' : '0'} 0; max-width:${shell.introMaxWidth || shell.headlineMaxWidth || '100%'}; font-size:15px; line-height:1.7; color:${shell.introColor}; font-family:${fontFamily};">
+        ${escapeHtmlPreservingVariables(composer.intro)}
+      </p>
+    `
+    : '';
   const ctaHtml =
     composer.ctaLabel && composer.ctaUrl
       ? `
@@ -66,7 +100,7 @@ function buildShellHtml(shell, composer) {
             href="${escapeHtmlPreservingVariables(composer.ctaUrl)}"
             target="_blank"
             rel="noopener noreferrer"
-            style="display:inline-block; padding:14px 22px; border-radius:999px; background:${shell.ctaButtonBackground}; color:${shell.ctaButtonColor}; font-weight:700; text-decoration:none;"
+            style="display:inline-block; padding:14px 22px; border-radius:999px; background:${shell.ctaButtonBackground}; color:${shell.ctaButtonColor}; font-weight:700; text-decoration:none; font-family:${fontFamily};"
           >
             ${escapeHtmlPreservingVariables(composer.ctaLabel)}
           </a>
@@ -81,29 +115,32 @@ function buildShellHtml(shell, composer) {
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>${escapeHtmlPreservingVariables(composer.headline || 'Novo email')}</title>
   </head>
-  <body style="margin:0; padding:0; background:${shell.pageBackground}; font-family:Arial, Helvetica, sans-serif; color:${shell.bodyColor};">
+  <body style="margin:0; padding:0; background:${shell.pageBackground}; font-family:${fontFamily}; color:${shell.bodyColor};">
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:${shell.pageBackground};">
       <tr>
         <td align="center" style="padding:32px 16px;">
           <table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0" style="width:100%; max-width:600px; background:#ffffff; border-radius:20px; overflow:hidden; border:${shell.frameBorder}; box-shadow:${shell.frameShadow};">
             <tr>
               <td style="padding:0;">
-                <div style="background:${shell.headerBackground}; padding:${shell.headerPadding}; text-align:${shell.headerAlign};">
-                  ${eyebrowHtml}
-                  ${logoHtml}
-                  <h1 style="margin:0; font-size:${shell.headlineSize}; line-height:1.18; color:${shell.headlineColor};">
-                    ${escapeHtmlPreservingVariables(composer.headline || 'Seu título aqui')}
-                  </h1>
-                  ${introHtml}
+                <div style="background:${shell.headerBackground}; text-align:${shell.headerAlign};">
+                  ${topAccentHtml}
+                  <div style="padding:${shell.headerPadding};">
+                    ${eyebrowHtml}
+                    ${logoPlateHtml}
+                    <h1 style="margin:${shell.headlineMargin || '18px 0 0'}; max-width:${shell.headlineMaxWidth || '100%'}; ${shell.headerAlign === 'center' ? 'margin-left:auto; margin-right:auto;' : ''} font-size:${shell.headlineSize}; line-height:1.14; color:${shell.headlineColor}; font-family:${fontFamily}; letter-spacing:${shell.headlineTracking || '-0.03em'};">
+                      ${escapeHtmlPreservingVariables(composer.headline || 'Seu título aqui')}
+                    </h1>
+                    ${introHtml}
+                  </div>
                 </div>
               </td>
             </tr>
             <tr>
-              <td style="padding:32px 36px 18px;">
-                ${normalizeRichBody(composer.bodyHtml)}
+              <td style="padding:${shell.bodyPadding || '32px 36px 18px'};">
+                ${normalizeRichBody(composer.bodyHtml, fontFamily, shell.bodyColor)}
                 ${ctaHtml}
                 <div style="margin-top:6px; padding-top:18px; border-top:1px solid ${shell.dividerColor};">
-                  <p style="margin:0; font-size:15px; line-height:1.72; color:${shell.bodyColor};">
+                  <p style="margin:0; font-size:15px; line-height:1.72; color:${shell.bodyColor}; font-family:${fontFamily};">
                     Atenciosamente,<br />
                     <strong>${normalizeSignature(composer.signature)}</strong>
                   </p>
@@ -112,7 +149,7 @@ function buildShellHtml(shell, composer) {
             </tr>
             <tr>
               <td style="padding:16px 36px 22px; background:${shell.footerBackground}; color:${shell.footerColor};">
-                <p style="margin:0; font-size:12px; line-height:1.62;">
+                <p style="margin:0; font-size:12px; line-height:1.62; font-family:${fontFamily};">
                   ${shell.footerNote}
                 </p>
               </td>
@@ -130,32 +167,42 @@ function createDefaultComposer(template) {
     headline: template.defaultHeadline || 'Seu título aqui',
     intro: template.defaultIntro || '',
     bodyHtml:
-      '<p style="margin:0 0 16px; font-size:15px; line-height:1.72; color:#2b2034;">Olá {{name}},</p><p style="margin:0 0 16px; font-size:15px; line-height:1.72; color:#2b2034;">Escreva aqui a mensagem principal do email. Você pode usar negrito, listas, links e variáveis da planilha.</p>',
+      '<p style="margin:0 0 16px; font-size:15px; line-height:1.72;">Olá {{name}},</p><p style="margin:0 0 16px; font-size:15px; line-height:1.72;">Escreva aqui a mensagem principal do email. Você pode usar negrito, listas, links e variáveis da planilha.</p>',
     ctaLabel: '',
     ctaUrl: DEFAULT_CTA_URL,
-    signature: 'Equipe {{brand_name}}'
+    signature: 'Equipe {{brand_name}}',
+    fontFamily: DEFAULT_TEMPLATE_FONT_FAMILY
   };
 }
 
 export const BUILT_IN_TEMPLATES = [
   {
     id: 'banner_editorial',
-    name: 'Banner editorial',
+    name: 'Editorial premium',
     category: 'Institucional',
-    description: 'Base mais próxima do template.html, com topo largo e leitura clássica.',
+    description: 'Mais próximo do template principal: elegante, limpo e com leitura editorial.',
     isDefault: true,
     eyebrow: '*english follows portuguese*',
     eyebrowColor: '#7a6d77',
+    topAccent: 'linear-gradient(90deg, #6d21b0 0%, #b34bff 100%)',
+    topAccentHeight: '8px',
     pageBackground: '#f4f1f7',
-    headerBackground: 'linear-gradient(180deg,#f8f3fb 0%, #ffffff 100%)',
-    headerPadding: '26px 36px 18px',
+    headerBackground: 'linear-gradient(180deg,#faf6fd 0%, #ffffff 100%)',
+    headerPadding: '28px 36px 24px',
     headerAlign: 'center',
-    logoWidth: 250,
-    logoMargin: '0 auto 18px',
-    headlineSize: '28px',
+    logoWidth: 245,
+    logoPlateBackground: '#ffffff',
+    logoPlatePadding: '12px 18px',
+    logoPlateRadius: '18px',
+    logoPlateShadow: '0 14px 34px rgba(103, 39, 163, 0.08)',
+    logoPlateMargin: '0 auto',
+    headlineSize: '30px',
     headlineColor: '#1a1a1a',
+    headlineMaxWidth: '460px',
+    introMaxWidth: '420px',
     introColor: '#64596c',
     bodyColor: '#222222',
+    bodyPadding: '34px 38px 20px',
     ctaPanelBackground: '#f4eef7',
     ctaButtonBackground: '#7d28c2',
     ctaButtonColor: '#ffffff',
@@ -163,7 +210,7 @@ export const BUILT_IN_TEMPLATES = [
     footerBackground: '#f7f3f8',
     footerColor: '#6d6174',
     frameBorder: '1px solid #ebe5ef',
-    frameShadow: '0 18px 44px rgba(71, 31, 98, 0.08)',
+    frameShadow: '0 22px 56px rgba(71, 31, 98, 0.08)',
     footerNote:
       'Envio realizado por {{brand_name}}. Quando o unsubscribe estiver ligado na configuração, o link aparecerá automaticamente no rodapé do email.',
     defaultHeadline: 'Atualização importante para sua operação',
@@ -171,21 +218,26 @@ export const BUILT_IN_TEMPLATES = [
   },
   {
     id: 'hero_soft',
-    name: 'Hero suave',
+    name: 'Hero executivo',
     category: 'Relacionamento',
-    description: 'Topo com mais presença visual e card branco limpo para campanhas e anúncios.',
+    description: 'Header forte, mais premium, com contraste alto e logo branca.',
     eyebrow: 'Comunicado',
-    eyebrowColor: 'rgba(255,255,255,0.8)',
+    eyebrowColor: 'rgba(255,255,255,0.76)',
     pageBackground: '#f3edf8',
-    headerBackground: 'linear-gradient(135deg,#8b33d0 0%, #6d21b0 100%)',
-    headerPadding: '32px 36px 28px',
+    headerBackground: 'linear-gradient(135deg,#5c1793 0%, #8c34d1 100%)',
+    headerPadding: '34px 38px 30px',
     headerAlign: 'left',
-    logoWidth: 230,
-    logoMargin: '0 0 20px',
-    headlineSize: '30px',
+    useWhiteLogo: true,
+    logoWidth: 235,
+    logoPlateBackground: 'transparent',
+    logoPlateMargin: '0',
+    headlineSize: '31px',
     headlineColor: '#ffffff',
-    introColor: 'rgba(255,255,255,0.88)',
+    headlineMaxWidth: '420px',
+    introMaxWidth: '420px',
+    introColor: 'rgba(255,255,255,0.92)',
     bodyColor: '#251b33',
+    bodyPadding: '34px 38px 20px',
     ctaPanelBackground: 'linear-gradient(135deg,#efe1ff,#f7efff)',
     ctaButtonBackground: '#6f22b4',
     ctaButtonColor: '#ffffff',
@@ -193,28 +245,37 @@ export const BUILT_IN_TEMPLATES = [
     footerBackground: '#f8f2ff',
     footerColor: '#675978',
     frameBorder: '1px solid #e7dbf5',
-    frameShadow: '0 20px 44px rgba(63, 17, 97, 0.10)',
+    frameShadow: '0 24px 56px rgba(63, 17, 97, 0.12)',
     footerNote: 'Ideal para emails promocionais, lançamentos e convites para ação.',
     defaultHeadline: 'Destaque sua mensagem principal',
-    defaultIntro: 'Use este shell quando você quiser um topo mais marcante, sem perder legibilidade.'
+    defaultIntro: 'Use este shell quando você quiser um topo marcante, sem perder leitura.'
   },
   {
     id: 'notice_clean',
     name: 'Aviso clean',
     category: 'Operação',
-    description: 'Mais sóbrio, excelente para cobranças, prazos e instruções.',
+    description: 'Mais sóbrio, excelente para cobrança, prazo e instrução operacional.',
     eyebrow: 'Aviso',
     eyebrowColor: '#7c28c3',
+    topAccent: 'linear-gradient(90deg, #7b29c1 0%, #d9b9ff 100%)',
+    topAccentHeight: '6px',
     pageBackground: '#f5f1f9',
     headerBackground: '#ffffff',
     headerPadding: '26px 36px 18px',
     headerAlign: 'left',
-    logoWidth: 200,
-    logoMargin: '0 0 18px',
+    logoWidth: 205,
+    logoPlateBackground: '#fbf7ff',
+    logoPlatePadding: '10px 14px',
+    logoPlateRadius: '16px',
+    logoPlateShadow: '0 10px 24px rgba(90, 31, 141, 0.05)',
+    logoPlateMargin: '0',
     headlineSize: '28px',
     headlineColor: '#231630',
+    headlineMaxWidth: '430px',
+    introMaxWidth: '430px',
     introColor: '#62566d',
     bodyColor: '#2b2034',
+    bodyPadding: '32px 36px 18px',
     ctaPanelBackground: '#f1e8fb',
     ctaButtonBackground: '#7726ba',
     ctaButtonColor: '#ffffff',
@@ -222,28 +283,33 @@ export const BUILT_IN_TEMPLATES = [
     footerBackground: '#faf7fc',
     footerColor: '#6c6075',
     frameBorder: '1px solid #ece4f2',
-    frameShadow: '0 14px 36px rgba(66, 23, 92, 0.06)',
+    frameShadow: '0 16px 38px rgba(66, 23, 92, 0.06)',
     footerNote: 'Use esta base para comunicação operacional, financeira ou de compliance.',
     defaultHeadline: 'Explique a atualização com clareza',
     defaultIntro: 'Estrutura enxuta e profissional para informações importantes.'
   },
   {
     id: 'band_top',
-    name: 'Faixa superior',
+    name: 'Faixa premium',
     category: 'Promoção',
-    description: 'Topo forte com faixa de cor e CTA bem visível.',
+    description: 'Header com presença visual forte e CTA bem destacado.',
     eyebrow: 'Campanha',
-    eyebrowColor: '#ffffff',
+    eyebrowColor: 'rgba(255,255,255,0.82)',
     pageBackground: '#f4eef9',
-    headerBackground: 'linear-gradient(180deg,#5d1697 0%, #8d35d3 100%)',
-    headerPadding: '18px 36px 26px',
+    headerBackground: 'linear-gradient(180deg,#48117c 0%, #8d35d3 100%)',
+    headerPadding: '20px 36px 28px',
     headerAlign: 'center',
-    logoWidth: 220,
-    logoMargin: '8px auto 20px',
-    headlineSize: '30px',
+    useWhiteLogo: true,
+    logoWidth: 225,
+    logoPlateBackground: 'transparent',
+    logoPlateMargin: '8px auto 0',
+    headlineSize: '31px',
     headlineColor: '#ffffff',
+    headlineMaxWidth: '430px',
+    introMaxWidth: '410px',
     introColor: 'rgba(255,255,255,0.9)',
     bodyColor: '#281d34',
+    bodyPadding: '34px 38px 20px',
     ctaPanelBackground: 'linear-gradient(135deg,#7c28c3,#9a4ad9)',
     ctaButtonBackground: '#ffffff',
     ctaButtonColor: '#6720a8',
@@ -251,7 +317,7 @@ export const BUILT_IN_TEMPLATES = [
     footerBackground: '#f6effd',
     footerColor: '#655976',
     frameBorder: '1px solid #e5d8f4',
-    frameShadow: '0 18px 42px rgba(76, 24, 116, 0.10)',
+    frameShadow: '0 20px 48px rgba(76, 24, 116, 0.12)',
     footerNote: 'Bom para emails de campanha, benefício, cupom ou comunicação de lançamento.',
     defaultHeadline: 'Convide o destinatário a agir',
     defaultIntro: 'Ideal para quando o botão é parte importante do resultado.'
@@ -265,14 +331,18 @@ export const BUILT_IN_TEMPLATES = [
     eyebrowColor: '#8a43c8',
     pageBackground: '#f5f2f8',
     headerBackground: '#ffffff',
-    headerPadding: '24px 36px 12px',
+    headerPadding: '24px 36px 14px',
     headerAlign: 'left',
     logoWidth: 180,
-    logoMargin: '0 0 16px',
+    logoPlateBackground: 'transparent',
+    logoPlateMargin: '0',
     headlineSize: '26px',
     headlineColor: '#231830',
+    headlineMaxWidth: '420px',
+    introMaxWidth: '420px',
     introColor: '#685c73',
     bodyColor: '#261c32',
+    bodyPadding: '30px 36px 18px',
     ctaPanelBackground: '#f4ecfb',
     ctaButtonBackground: '#7b27c0',
     ctaButtonColor: '#ffffff',
