@@ -1,9 +1,9 @@
 const ITEMS = [
   { id: 'contacts', label: 'Contatos' },
   { id: 'template', label: 'Template' },
-  { id: 'config', label: 'Configuracao' },
+  { id: 'config', label: 'Configuração' },
   { id: 'dashboard', label: 'Dashboard' },
-  { id: 'report', label: 'Relatorio' }
+  { id: 'report', label: 'Relatório' }
 ];
 
 export function Sidebar({ activeScreen, onSelectScreen, totalContacts, historyCount }) {
@@ -17,8 +17,8 @@ export function Sidebar({ activeScreen, onSelectScreen, totalContacts, historyCo
         </div>
         <h2>Envio de Email</h2>
         <p>
-          Filas previsiveis, personalizacao segura e governanca de envio para operacoes Rakuten em
-          escala.
+          Importe a base, escolha um modelo pronto, valide e acompanhe o disparo sem precisar
+          navegar por uma interface confusa.
         </p>
       </div>
 
@@ -40,7 +40,7 @@ export function Sidebar({ activeScreen, onSelectScreen, totalContacts, historyCo
           <strong>{totalContacts}</strong>
         </div>
         <div>
-          <span>Campanhas no historico</span>
+          <span>Campanhas no histórico</span>
           <strong>{historyCount}</strong>
         </div>
       </div>

@@ -162,7 +162,7 @@ button {
 .workspace-header {
   display: flex;
   justify-content: space-between;
-  align-items: flex-end;
+  align-items: flex-start;
   gap: 24px;
   margin-bottom: 28px;
 }
@@ -174,6 +174,18 @@ button {
 .workspace-copy {
   max-width: 720px;
   color: var(--muted);
+  line-height: 1.65;
+}
+
+.section-copy {
+  margin: 10px 0 0;
+  max-width: 680px;
+  color: var(--muted);
+  line-height: 1.65;
+}
+
+.section-copy.no-margin {
+  margin: 0;
 }
 
 .workspace-actions,
@@ -243,7 +255,7 @@ button {
 .config-grid,
 .dashboard-grid,
 .report-grid {
-  grid-template-columns: minmax(0, 1.3fr) minmax(320px, 0.9fr);
+  grid-template-columns: minmax(0, 1.2fr) minmax(320px, 0.88fr);
 }
 
 .panel {
@@ -279,6 +291,10 @@ button {
 
 .stats-row {
   grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.contact-stats-row {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
 }
 
 .stats-grid {
@@ -317,6 +333,14 @@ button {
   flex-wrap: wrap;
 }
 
+.contact-toolbar {
+  align-items: center;
+}
+
+.helper-pills {
+  margin-bottom: 18px;
+}
+
 .segment {
   background: rgba(255, 255, 255, 0.85);
   border-color: var(--line);
@@ -339,7 +363,7 @@ button {
 }
 
 .table-shell {
-  max-height: 560px;
+  max-height: 500px;
   overflow: auto;
 }
 
@@ -421,6 +445,11 @@ textarea.input-field {
   background: var(--surface-strong);
 }
 
+.compact-toggle {
+  grid-column: auto;
+  margin: 0;
+}
+
 .note-block {
   padding: 18px;
   border-radius: 20px;
@@ -475,6 +504,139 @@ textarea.input-field {
   margin-top: 20px;
 }
 
+.template-quickstart {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.quickstart-item {
+  padding: 16px 18px;
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.76);
+  border: 1px solid var(--line);
+  display: grid;
+  gap: 6px;
+}
+
+.quickstart-item strong,
+.config-section-header strong {
+  font-size: 1rem;
+}
+
+.quickstart-item span,
+.config-section-header span,
+.template-card p,
+.preview-empty-state p {
+  color: var(--muted);
+  line-height: 1.55;
+}
+
+.template-mode-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.template-library {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.template-card {
+  display: grid;
+  gap: 12px;
+  padding: 18px;
+  border-radius: 22px;
+  background: rgba(255, 255, 255, 0.78);
+  border: 1px solid var(--line);
+}
+
+.template-card.active {
+  border-color: rgba(133, 41, 205, 0.22);
+  background: linear-gradient(180deg, rgba(241, 228, 255, 0.8), rgba(255, 255, 255, 0.92));
+}
+
+.template-card h4 {
+  margin: 0;
+  font-size: 1.05rem;
+  letter-spacing: -0.02em;
+}
+
+.template-card p {
+  margin: 0;
+}
+
+.template-card-top {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: center;
+}
+
+.template-category,
+.template-badge,
+.template-tag {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  font-size: 0.76rem;
+  line-height: 1;
+}
+
+.template-category,
+.template-tag {
+  padding: 8px 10px;
+  background: rgba(133, 41, 205, 0.08);
+  color: var(--accent-deep);
+}
+
+.template-badge {
+  padding: 8px 12px;
+  background: linear-gradient(135deg, var(--accent), var(--accent-deep));
+  color: white;
+  font-weight: 700;
+}
+
+.template-tag-row {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.template-use-button {
+  justify-self: start;
+  margin-top: auto;
+}
+
+.template-editor-toolbar {
+  display: grid;
+  grid-template-columns: minmax(0, 1.3fr) minmax(220px, 0.8fr);
+  gap: 14px;
+  align-items: stretch;
+}
+
+.template-simple-stack {
+  display: grid;
+  gap: 14px;
+}
+
+.template-preview-panel,
+.test-panel {
+  position: sticky;
+  top: 24px;
+  align-self: start;
+}
+
+.compact-note {
+  margin-top: 0;
+}
+
+.compact-note p {
+  margin-bottom: 0;
+}
+
 .preview-header {
   display: flex;
   justify-content: space-between;
@@ -488,6 +650,103 @@ textarea.input-field {
   max-height: 420px;
   overflow: auto;
   padding: 22px;
+}
+
+.mail-preview-shell {
+  margin-top: 16px;
+}
+
+.mail-preview-frame {
+  min-height: 520px;
+  max-height: 640px;
+  padding: 0;
+  background: linear-gradient(180deg, #f8f2ff 0%, #ffffff 100%);
+}
+
+.mail-preview-iframe {
+  width: 100%;
+  min-height: 620px;
+  border: 0;
+  background: #ffffff;
+}
+
+.preview-empty-state {
+  min-height: 320px;
+  display: grid;
+  place-items: center;
+  text-align: center;
+  padding: 32px;
+  border: 1px dashed rgba(133, 41, 205, 0.18);
+  border-radius: 24px;
+  background: rgba(255, 255, 255, 0.84);
+}
+
+.config-screen-grid {
+  align-items: start;
+}
+
+.config-sections {
+  display: grid;
+  gap: 18px;
+}
+
+.config-section {
+  display: grid;
+  gap: 14px;
+  padding: 18px 20px;
+  border-radius: 22px;
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.72);
+}
+
+.config-section-header {
+  display: grid;
+  gap: 4px;
+}
+
+.toggle-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.advanced-panel {
+  border: 1px solid var(--line);
+  border-radius: 22px;
+  background: rgba(255, 255, 255, 0.72);
+  overflow: hidden;
+}
+
+.advanced-panel summary {
+  cursor: pointer;
+  padding: 18px 20px;
+  font-weight: 700;
+  list-style: none;
+}
+
+.advanced-panel summary::-webkit-details-marker {
+  display: none;
+}
+
+.advanced-panel[open] summary {
+  border-bottom: 1px solid var(--line);
+}
+
+.advanced-panel-body {
+  padding: 18px 20px 20px;
+  display: grid;
+  gap: 16px;
+}
+
+.empty-state {
+  min-height: 260px;
+  border-radius: 24px;
+  border: 1px dashed rgba(133, 41, 205, 0.2);
+  background: rgba(255, 255, 255, 0.7);
+  display: grid;
+  place-items: center;
+  text-align: center;
+  padding: 24px;
 }
 
 .test-results {
@@ -615,7 +874,17 @@ textarea.input-field {
 
   .form-grid.two-columns,
   .stats-grid,
-  .stats-row {
+  .stats-row,
+  .contact-stats-row,
+  .template-quickstart,
+  .template-library,
+  .template-editor-toolbar,
+  .toggle-grid {
     grid-template-columns: 1fr;
+  }
+
+  .template-preview-panel,
+  .test-panel {
+    position: static;
   }
 }

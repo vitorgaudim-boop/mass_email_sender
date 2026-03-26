@@ -16,9 +16,11 @@ Desktop app em Electron para envio massivo de emails com SendGrid, com filas rob
 - Importa contatos de `.xlsx` com coluna obrigatoria `email`
 - Destaca emails invalidos, permite exclusao de linhas e guarda o buffer temporariamente em SQLite
 - Importa templates `.html` e `.eml`
+- Já abre com um template padrão Rakuten carregado
+- Traz uma biblioteca com 5 templates prontos para uso
 - Suporta dois modos de template:
-  - Conteudo local com preview renderizado no app
-  - Template dinamico do SendGrid com `template_id` `d-*`
+  - Conteúdo local com preview renderizado no app
+  - Template dinâmico do SendGrid com `template_id` `d-*`
 - Suporta envios `TO`, `CC` e `BCC`
 - Suporta modo individual por contato e modo `BCC` compartilhado
 - Envia testes para um ou mais emails antes da campanha
@@ -114,6 +116,24 @@ Exemplo:
 - Isso usa `tracking_settings.subscription_tracking` do SendGrid
 - Se sua conta usa suppression groups, preencha o `ASM Group ID` na tela de configuracao
 
+## Templates prontos
+
+O app traz 5 modelos Rakuten embutidos:
+
+1. Comunicado institucional bilíngue
+2. Oferta com cupom
+3. Boas-vindas
+4. Lembrete com ação
+5. Comunicado operacional
+
+Fluxo sugerido:
+
+1. Vá para `Template`
+2. Clique em `Usar modelo`
+3. Ajuste o texto principal
+4. Revise o preview automático
+5. Envie um teste
+
 ## Como rodar
 
 ```bash
@@ -146,11 +166,12 @@ Observacao: o build atual usa `rakuten_logo.ico` como icone do executavel e do i
 1. Importe a planilha `.xlsx`
 2. Revise linhas invalidas ou exclua contatos do envio
 3. Importe o template `.html` ou `.eml`, ou informe um `template_id` dinamico
-4. Ajuste marca, logo, remetente, assunto, lote, delay, unsubscribe, headers e listas CC/BCC
-5. Envie um teste
-6. Inicie a campanha
-7. Acompanhe o dashboard
-8. Exporte o CSV final e, se desejar, apague os detalhes sensiveis
+4. Ajuste marca, logo, remetente, assunto, lote, unsubscribe e modo de envio
+5. Se precisar, abra `Opções avançadas` para CC/BCC, timeout, ASM e headers
+6. Envie um teste
+7. Inicie a campanha
+8. Acompanhe o dashboard
+9. Exporte o CSV final e, se desejar, apague os detalhes sensiveis
 
 ## Persistencia
 

@@ -56,16 +56,16 @@ export function App() {
       <div className="app-shell fallback-shell">
         <main className="workspace">
           <section className="panel">
-            <p className="eyebrow">Desktop bridge error</p>
+            <p className="eyebrow">Erro da camada desktop</p>
             <h1>Envio de Email</h1>
             <p className="workspace-copy">
-              A interface carregou, mas a camada desktop do Electron nao ficou disponivel.
+              A interface carregou, mas a ponte segura do Electron não ficou disponível.
             </p>
             <div className="note-block">
               <strong>O que verificar</strong>
               <p>
-                Reinstale o app usando o instalador mais recente e garanta que voce abriu `Envio de
-                Email Setup 1.0.0.exe`, nao a versao antiga `Envio de Cupons`.
+                Reinstale o app usando o instalador mais recente e garanta que você abriu `Envio de
+                Email Setup 1.0.0.exe`, não a versão antiga `Envio de Cupons`.
               </p>
             </div>
           </section>
@@ -155,6 +155,28 @@ export function App() {
     return () => clearTimeout(timer);
   }, [templateDraft, busyState.bootstrapping]);
 
+  useEffect(() => {
+    if (busyState.bootstrapping) {
+      return undefined;
+    }
+
+    const timer = setTimeout(() => {
+      desktopApi
+        .previewTemplate({
+          template: templateDraft,
+          config: configDraft
+        })
+        .then((preview) => {
+          startTransition(() => {
+            setTestState((current) => ({ ...current, preview }));
+          });
+        })
+        .catch(() => {});
+    }, 250);
+
+    return () => clearTimeout(timer);
+  }, [templateDraft, configDraft, busyState.bootstrapping]);
+
   async function refreshHistory(focusCampaignId = '') {
     const nextHistory = await desktopApi.getHistory();
     startTransition(() => {
@@ -190,7 +212,7 @@ export function App() {
         setContacts(payload.contacts);
         setNotice({
           type: 'success',
-          message: `${payload.summary.validRows} contato(s) validado(s), ${payload.summary.invalidRows} invalido(s).`
+          message: `${payload.summary.validRows} contato(s) validado(s), ${payload.summary.invalidRows} inválido(s).`
         });
         setActiveScreen('contacts');
       });
@@ -270,7 +292,7 @@ export function App() {
           results: payload.results
         }));
       });
-      setNotice({ type: 'success', message: 'Envio de teste concluido.' });
+      setNotice({ type: 'success', message: 'Envio de teste concluído.' });
     } catch (error) {
       setNotice({ type: 'error', message: error.message });
     } finally {
@@ -306,7 +328,7 @@ export function App() {
         return;
       }
 
-      setNotice({ type: 'success', message: `Relatorio exportado para ${filePath}.` });
+      setNotice({ type: 'success', message: `Relatório exportado para ${filePath}.` });
     } catch (error) {
       setNotice({ type: 'error', message: error.message });
     }
@@ -339,15 +361,23 @@ export function App() {
             <p className="eyebrow">Rakuten Email Operations</p>
             <h1>Envio de Email</h1>
             <p className="workspace-copy">
-              Campanhas SendGrid com branding centralizado, unsubscribe padrao, lotes controlados e
-              feedback em tempo real.
+              Importe a base, escolha um modelo pronto, valide com teste e acompanhe o disparo em
+              tempo real.
             </p>
           </div>
           <div className="workspace-actions">
-            <button className="ghost-button" onClick={handleImportContacts} disabled={busyState.importingContacts}>
+            <button
+              className="ghost-button"
+              onClick={handleImportContacts}
+              disabled={busyState.importingContacts}
+            >
               {busyState.importingContacts ? 'Importando...' : 'Importar contatos'}
             </button>
-            <button className="primary-button" onClick={handleImportTemplate} disabled={busyState.importingTemplate}>
+            <button
+              className="primary-button"
+              onClick={handleImportTemplate}
+              disabled={busyState.importingTemplate}
+            >
               {busyState.importingTemplate ? 'Carregando...' : 'Carregar template'}
             </button>
           </div>
@@ -361,7 +391,7 @@ export function App() {
               contacts={contacts}
               onImportContacts={handleImportContacts}
               onClearContacts={() =>
-                handleContactMutation(() => desktopApi.clearContacts(), 'Contatos temporarios removidos.')
+                handleContactMutation(() => desktopApi.clearContacts(), 'Contatos temporários removidos.')
               }
               onRemoveContacts={(ids) =>
                 handleContactMutation(() => desktopApi.removeContacts(ids), 'Linhas removidas com sucesso.')
@@ -369,7 +399,7 @@ export function App() {
               onExcludeContacts={(ids, excluded) =>
                 handleContactMutation(
                   () => desktopApi.excludeContacts(ids, excluded),
-                  excluded ? 'Linhas excluidas do envio.' : 'Linhas reativadas para envio.'
+                  excluded ? 'Linhas excluídas do envio.' : 'Linhas reativadas para envio.'
                 )
               }
             />
@@ -390,7 +420,9 @@ export function App() {
             <ConfigScreen
               configDraft={configDraft}
               onChangeConfig={setConfigDraft}
-              campaignIsActive={Boolean(campaignProgress && !FINAL_STATUSES.has(campaignProgress.status))}
+              campaignIsActive={Boolean(
+                campaignProgress && !FINAL_STATUSES.has(campaignProgress.status)
+              )}
               onSendTest={handleSendTest}
               onStartCampaign={handleStartCampaign}
               testState={testState}
@@ -404,9 +436,21 @@ export function App() {
             <DashboardScreen
               progress={campaignProgress}
               logs={campaignLogs}
-              onPause={() => desktopApi.pauseCampaign().catch((error) => setNotice({ type: 'error', message: error.message }))}
-              onResume={() => desktopApi.resumeCampaign().catch((error) => setNotice({ type: 'error', message: error.message }))}
-              onCancel={() => desktopApi.cancelCampaign().catch((error) => setNotice({ type: 'error', message: error.message }))}
+              onPause={() =>
+                desktopApi
+                  .pauseCampaign()
+                  .catch((error) => setNotice({ type: 'error', message: error.message }))
+              }
+              onResume={() =>
+                desktopApi
+                  .resumeCampaign()
+                  .catch((error) => setNotice({ type: 'error', message: error.message }))
+              }
+              onCancel={() =>
+                desktopApi
+                  .cancelCampaign()
+                  .catch((error) => setNotice({ type: 'error', message: error.message }))
+              }
             />
           ) : null}
 

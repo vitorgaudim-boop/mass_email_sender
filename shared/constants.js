@@ -1,6 +1,8 @@
+import { createDraftFromPreset, DEFAULT_TEMPLATE_PRESET } from './templateCatalog.js';
+
 export const DEFAULT_BRAND_NAME = 'Rakuten Advertising';
 export const DEFAULT_BRAND_LOGO_URL =
-  'https://content.rd.linksynergy.com/CreativeCommunications/RakutenAdvertising/RAD-logo-400x50-8529CD.png';
+  'https://rakutenadvertising.com/wp-content/uploads/sites/2/2023/01/RAD_Logo_Hor_RADPurple-9.svg';
 export const DEFAULT_SUBSCRIPTION_TRACKING_TEXT =
   'Para deixar de receber estes emails, use o link de unsubscribe ao final desta mensagem. To stop receiving these emails, use the unsubscribe link at the end of this message.';
 export const DEFAULT_SUBSCRIPTION_TRACKING_HTML =
@@ -33,16 +35,7 @@ export const DEFAULT_SEND_CONFIG = {
   autoDeleteTempContacts: true
 };
 
-export const DEFAULT_TEMPLATE_DRAFT = {
-  mode: 'local',
-  sourceType: 'html',
-  fileName: '',
-  html: '',
-  text: '',
-  subject: '',
-  templateId: '',
-  variables: []
-};
+export const DEFAULT_TEMPLATE_DRAFT = createDraftFromPreset(DEFAULT_TEMPLATE_PRESET);
 
 export const CAMPAIGN_STATUS = {
   IDLE: 'ociosa',
