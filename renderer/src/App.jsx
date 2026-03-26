@@ -33,17 +33,30 @@ function buildAvailableFields(contacts) {
 }
 
 function countEligibleContacts(contacts, selectedGroupIds = []) {
-  return contacts.filter((contact) => {
-    if (!contact.isValid || contact.excluded) {
-      return false;
-    }
+  const seenEmails = new Set();
 
-    if (!selectedGroupIds.length) {
+  return contacts
+    .filter((contact) => {
+      if (!contact.isValid || contact.excluded) {
+        return false;
+      }
+
+      if (!selectedGroupIds.length) {
+        return true;
+      }
+
+      return (contact.groups || []).some((group) => selectedGroupIds.includes(group.id));
+    })
+    .filter((contact) => {
+      const emailKey = String(contact.email ?? '').trim().toLowerCase();
+
+      if (!emailKey || seenEmails.has(emailKey)) {
+        return false;
+      }
+
+      seenEmails.add(emailKey);
       return true;
-    }
-
-    return (contact.groups || []).some((group) => selectedGroupIds.includes(group.id));
-  }).length;
+    }).length;
 }
 
 export function App() {

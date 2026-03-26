@@ -224,15 +224,16 @@ export function registerIpcHandlers({ database, queueManager }) {
   ipcMain.handle('campaign:start', async (_event, { config, template }) => {
     const normalizedConfig = normalizeConfigPayload(config);
     const contacts = getEligibleContactsForConfig(database, normalizedConfig);
+    const uniqueContacts = queueManager.emailService.normalizeContactsForSend(contacts);
     if (queueManager.getCurrentCampaign()) {
       throw new Error('Ja existe uma campanha em andamento.');
     }
 
-    queueManager.emailService.validateConfig(normalizedConfig, template, contacts);
+    queueManager.emailService.validateConfig(normalizedConfig, template, uniqueContacts);
     database.saveConfigDraft(normalizedConfig);
     database.saveTemplateDraft(template);
 
-    queueManager.startCampaign({ config: normalizedConfig, template, contacts }).catch((error) => {
+    queueManager.startCampaign({ config: normalizedConfig, template, contacts: uniqueContacts }).catch((error) => {
       queueManager.emit('error', {
         message: error.message,
         createdAt: new Date().toISOString()
@@ -241,7 +242,7 @@ export function registerIpcHandlers({ database, queueManager }) {
 
     return {
       started: true,
-      totalContacts: contacts.length
+      totalContacts: uniqueContacts.length
     };
   });
 

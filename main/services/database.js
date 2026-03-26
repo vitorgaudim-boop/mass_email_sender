@@ -23,6 +23,10 @@ function stringify(value) {
   return JSON.stringify(value ?? null);
 }
 
+function normalizeEmailKey(email) {
+  return String(email ?? '').trim().toLowerCase();
+}
+
 export class DatabaseService {
   constructor(dbPath) {
     this.dbPath = dbPath;
@@ -271,8 +275,10 @@ export class DatabaseService {
   getEligibleContacts(groupIds = []) {
     const allowedEmails =
       Array.isArray(groupIds) && groupIds.length ? this.listGroupMemberEmails(groupIds) : null;
+    const uniqueContacts = [];
+    const seenEmails = new Set();
 
-    return this.listTempContacts()
+    for (const contact of this.listTempContacts()
       .filter((contact) => contact.isValid && !contact.excluded)
       .filter((contact) => (allowedEmails ? allowedEmails.has(contact.email) : true))
       .map((contact) => ({
@@ -280,7 +286,21 @@ export class DatabaseService {
         email: contact.email,
         name: contact.name || '',
         variables: contact.variables || {}
-      }));
+      }))) {
+      const emailKey = normalizeEmailKey(contact.email);
+
+      if (!emailKey || seenEmails.has(emailKey)) {
+        continue;
+      }
+
+      seenEmails.add(emailKey);
+      uniqueContacts.push({
+        ...contact,
+        email: emailKey
+      });
+    }
+
+    return uniqueContacts;
   }
 
   listContactGroups() {

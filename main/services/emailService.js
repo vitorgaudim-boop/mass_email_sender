@@ -36,6 +36,65 @@ function sanitizeAddress(recipient, fallbackName = '') {
   };
 }
 
+function normalizeEmailKey(email) {
+  return String(email ?? '').trim().toLowerCase();
+}
+
+function dedupeContacts(contacts = []) {
+  const uniqueContacts = [];
+  const seenEmails = new Set();
+
+  for (const contact of contacts) {
+    const emailKey = normalizeEmailKey(contact?.email);
+
+    if (!emailKey || seenEmails.has(emailKey)) {
+      continue;
+    }
+
+    seenEmails.add(emailKey);
+    uniqueContacts.push({
+      ...contact,
+      email: emailKey
+    });
+  }
+
+  return uniqueContacts;
+}
+
+function buildUniqueRecipientSets({ to = [], cc = [], bcc = [] }) {
+  const seenEmails = new Set();
+
+  function takeUnique(recipients) {
+    const uniqueRecipients = [];
+
+    for (const recipient of recipients) {
+      const emailKey = normalizeEmailKey(recipient?.email);
+
+      if (!emailKey || seenEmails.has(emailKey)) {
+        continue;
+      }
+
+      seenEmails.add(emailKey);
+      uniqueRecipients.push(sanitizeAddress({
+        ...recipient,
+        email: emailKey
+      }));
+    }
+
+    return uniqueRecipients;
+  }
+
+  const uniqueTo = takeUnique(to);
+  const uniqueCc = takeUnique(cc);
+  const uniqueBcc = takeUnique(bcc);
+
+  return {
+    to: uniqueTo,
+    ...(uniqueCc.length ? { cc: uniqueCc } : {}),
+    ...(uniqueBcc.length ? { bcc: uniqueBcc } : {})
+  };
+}
+
 function parseAddressLists(config) {
   const cc = parseRecipientList(config.ccListText);
   const bcc = parseRecipientList(config.bccListText);
@@ -222,11 +281,14 @@ function buildDynamicPersonalization(contact, config, ccList, bccList, campaignI
     ...buildContactVariables(contact),
     ...buildBrandVariables(config)
   };
+  const recipients = buildUniqueRecipientSets({
+    to: [sanitizeAddress(contact)],
+    cc: ccList,
+    bcc: bccList
+  });
 
   return {
-    to: [sanitizeAddress(contact)],
-    ...(ccList.length ? { cc: ccList.map((recipient) => sanitizeAddress(recipient)) } : {}),
-    ...(bccList.length ? { bcc: bccList.map((recipient) => sanitizeAddress(recipient)) } : {}),
+    ...recipients,
     dynamic_template_data: data,
     custom_args: buildPersonalizationMetadata(campaignId, batchIndex, contact)
   };
@@ -266,18 +328,22 @@ function getTemplateVariables(template) {
 }
 
 function buildLocalBatchRequests({ contacts, template, config, ccList, bccList, campaignId, batchIndex }) {
+  const uniqueContacts = dedupeContacts(contacts);
   const personalized = config.enablePersonalization && getTemplateVariables(template).length > 0;
 
   if (personalized) {
-    return contacts.map((contact) => {
+    return uniqueContacts.map((contact) => {
       const rendered = buildRenderedMessageForContact(template, contact, config);
+      const recipients = buildUniqueRecipientSets({
+        to: [sanitizeAddress(contact)],
+        cc: ccList,
+        bcc: bccList
+      });
       const payload = {
         ...buildBaseMessage(config, template, rendered),
         personalizations: [
           {
-            to: [sanitizeAddress(contact)],
-            ...(ccList.length ? { cc: ccList.map((recipient) => sanitizeAddress(recipient)) } : {}),
-            ...(bccList.length ? { bcc: bccList.map((recipient) => sanitizeAddress(recipient)) } : {}),
+            ...recipients,
             custom_args: buildPersonalizationMetadata(campaignId, batchIndex, contact)
           }
         ]
@@ -300,10 +366,12 @@ function buildLocalBatchRequests({ contacts, template, config, ccList, bccList, 
   const renderedWithTracking = appendSubscriptionTracking(rendered, config);
   const payload = {
     ...buildBaseMessage(config, template, renderedWithTracking),
-    personalizations: contacts.map((contact) => ({
-      to: [sanitizeAddress(contact)],
-      ...(ccList.length ? { cc: ccList.map((recipient) => sanitizeAddress(recipient)) } : {}),
-      ...(bccList.length ? { bcc: bccList.map((recipient) => sanitizeAddress(recipient)) } : {}),
+    personalizations: uniqueContacts.map((contact) => ({
+      ...buildUniqueRecipientSets({
+        to: [sanitizeAddress(contact)],
+        cc: ccList,
+        bcc: bccList
+      }),
       custom_args: buildPersonalizationMetadata(campaignId, batchIndex, contact)
     }))
   };
@@ -311,17 +379,18 @@ function buildLocalBatchRequests({ contacts, template, config, ccList, bccList, 
   return [
     buildRequestUnit({
       payload,
-      contacts,
+      contacts: uniqueContacts,
       requestStrategy: 'local_batch_request',
-      description: `Lote local com ${contacts.length} destinatario(s)`
+      description: `Lote local com ${uniqueContacts.length} destinatario(s)`
     })
   ];
 }
 
 function buildDynamicBatchRequests({ contacts, template, config, ccList, bccList, campaignId, batchIndex }) {
+  const uniqueContacts = dedupeContacts(contacts);
   const payload = {
     ...buildBaseMessage(config, template),
-    personalizations: contacts.map((contact) =>
+    personalizations: uniqueContacts.map((contact) =>
       buildDynamicPersonalization(contact, config, ccList, bccList, campaignId, batchIndex)
     )
   };
@@ -329,14 +398,15 @@ function buildDynamicBatchRequests({ contacts, template, config, ccList, bccList
   return [
     buildRequestUnit({
       payload,
-      contacts,
+      contacts: uniqueContacts,
       requestStrategy: 'dynamic_batch_request',
-      description: `Lote dinamico com ${contacts.length} destinatario(s)`
+      description: `Lote dinamico com ${uniqueContacts.length} destinatario(s)`
     })
   ];
 }
 
 function buildSharedBccRequest({ contacts, template, config, ccList, bccList, campaignId, batchIndex }) {
+  const uniqueContacts = dedupeContacts(contacts);
   const rendered =
     template.mode === 'local'
       ? appendSubscriptionTracking(
@@ -350,19 +420,19 @@ function buildSharedBccRequest({ contacts, template, config, ccList, bccList, ca
       : null;
 
   const visibleTo = {
-    email: config.visibleToEmail || config.senderEmail,
+    email: normalizeEmailKey(config.visibleToEmail || config.senderEmail),
     ...(config.visibleToName ? { name: config.visibleToName } : {})
   };
+  const recipients = buildUniqueRecipientSets({
+    to: [sanitizeAddress(visibleTo)],
+    cc: ccList,
+    bcc: [...uniqueContacts.map((contact) => sanitizeAddress(contact)), ...bccList]
+  });
   const payload = {
     ...buildBaseMessage(config, template, rendered),
     personalizations: [
       {
-        to: [sanitizeAddress(visibleTo)],
-        ...(ccList.length ? { cc: ccList.map((recipient) => sanitizeAddress(recipient)) } : {}),
-        bcc: [
-          ...contacts.map((contact) => sanitizeAddress(contact)),
-          ...bccList.map((recipient) => sanitizeAddress(recipient))
-        ],
+        ...recipients,
         custom_args: {
           campaignId,
           batchIndex,
@@ -375,9 +445,9 @@ function buildSharedBccRequest({ contacts, template, config, ccList, bccList, ca
   return [
     buildRequestUnit({
       payload,
-      contacts,
+      contacts: uniqueContacts,
       requestStrategy: 'shared_bcc_batch_request',
-      description: `Lote BCC compartilhado com ${contacts.length} contato(s)`
+      description: `Lote BCC compartilhado com ${uniqueContacts.length} contato(s)`
     })
   ];
 }
@@ -398,6 +468,10 @@ export class EmailService {
     this.env = env;
   }
 
+  normalizeContactsForSend(contacts = []) {
+    return dedupeContacts(contacts);
+  }
+
   validateEnvironment() {
     if (!this.env.SENDGRID_API_KEY) {
       throw new Error('SENDGRID_API_KEY nao foi encontrado no arquivo .env.');
@@ -406,6 +480,7 @@ export class EmailService {
 
   validateConfig(config, template, contacts = []) {
     this.validateEnvironment();
+    const uniqueContacts = dedupeContacts(contacts);
 
     if (!isValidEmail(config.senderEmail)) {
       throw new Error('Informe um remetente valido.');
@@ -443,7 +518,7 @@ export class EmailService {
       throw new Error('O ASM Group ID precisa ser um numero inteiro positivo.');
     }
 
-    if (!contacts.length) {
+    if (!uniqueContacts.length) {
       throw new Error('Nao ha contatos elegiveis para envio.');
     }
 
@@ -459,11 +534,12 @@ export class EmailService {
   }
 
   buildBatchRequests({ contacts, template, config, campaignId, batchIndex }) {
+    const uniqueContacts = dedupeContacts(contacts);
     const { cc, bcc } = parseAddressLists(config);
 
     if (config.sendMode === 'shared_bcc') {
       return buildSharedBccRequest({
-        contacts,
+        contacts: uniqueContacts,
         template,
         config,
         ccList: cc,
@@ -475,7 +551,7 @@ export class EmailService {
 
     if (template.mode === 'sendgrid_dynamic') {
       return buildDynamicBatchRequests({
-        contacts,
+        contacts: uniqueContacts,
         template,
         config,
         ccList: cc,
@@ -486,7 +562,7 @@ export class EmailService {
     }
 
     return buildLocalBatchRequests({
-      contacts,
+      contacts: uniqueContacts,
       template,
       config,
       ccList: cc,
@@ -497,23 +573,25 @@ export class EmailService {
   }
 
   getLogicalBatches(contacts, batchSize) {
-    return chunkArray(contacts, batchSize);
+    return chunkArray(dedupeContacts(contacts), batchSize);
   }
 
   countRequestUnits(contacts, template, config) {
+    const uniqueContacts = dedupeContacts(contacts);
+
     if (config.sendMode === 'shared_bcc') {
-      return Math.ceil(contacts.length / config.batchSize);
+      return Math.ceil(uniqueContacts.length / config.batchSize);
     }
 
     if (template.mode === 'sendgrid_dynamic') {
-      return Math.ceil(contacts.length / config.batchSize);
+      return Math.ceil(uniqueContacts.length / config.batchSize);
     }
 
     if (config.enablePersonalization && getTemplateVariables(template).length > 0) {
-      return contacts.length;
+      return uniqueContacts.length;
     }
 
-    return Math.ceil(contacts.length / config.batchSize);
+    return Math.ceil(uniqueContacts.length / config.batchSize);
   }
 
   async sendRequest(payload, { timeoutMs }) {

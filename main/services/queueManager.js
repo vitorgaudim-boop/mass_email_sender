@@ -136,6 +136,7 @@ export class QueueManager extends EventEmitter {
       name: recipient.name || '',
       variables: sampleContact.variables || {}
     }));
+    const uniqueTestContacts = this.emailService.normalizeContactsForSend(syntheticContacts);
     const templateForSend =
       template.mode === 'sendgrid_dynamic'
         ? template
@@ -144,7 +145,7 @@ export class QueueManager extends EventEmitter {
             subject: template.subject || config.subject
           };
     const requestUnits = this.emailService.buildBatchRequests({
-      contacts: syntheticContacts,
+      contacts: uniqueTestContacts,
       template: templateForSend,
       config: testConfig,
       campaignId: 'test-mode',
@@ -172,12 +173,14 @@ export class QueueManager extends EventEmitter {
       throw new Error('Ja existe uma campanha em andamento.');
     }
 
-    this.emailService.validateConfig(config, template, contacts);
-    const batches = this.emailService.getLogicalBatches(contacts, config.batchSize);
-    const totalRequestUnits = this.emailService.countRequestUnits(contacts, template, config);
+    const uniqueContacts = this.emailService.normalizeContactsForSend(contacts);
+
+    this.emailService.validateConfig(config, template, uniqueContacts);
+    const batches = this.emailService.getLogicalBatches(uniqueContacts, config.batchSize);
+    const totalRequestUnits = this.emailService.countRequestUnits(uniqueContacts, template, config);
     const templateSummary = this.emailService.summarizeTemplate(template);
-    const campaignId = this.database.createCampaignRun(config, templateSummary, contacts.length);
-    const metrics = createMetrics(contacts.length);
+    const campaignId = this.database.createCampaignRun(config, templateSummary, uniqueContacts.length);
+    const metrics = createMetrics(uniqueContacts.length);
 
     this.currentCampaign = {
       campaignId,
@@ -191,7 +194,7 @@ export class QueueManager extends EventEmitter {
 
     this.log('info', 'Campanha iniciada.', {
       campaignId,
-      totalContacts: contacts.length,
+      totalContacts: uniqueContacts.length,
       batches: batches.length
     });
     this.emitProgress();

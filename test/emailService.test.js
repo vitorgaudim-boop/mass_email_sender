@@ -126,6 +126,64 @@ describe('emailService', () => {
     ).toThrow(/BCC compartilhado/);
   });
 
+  it('deduplicates recipients across to, cc and bcc in shared BCC mode', () => {
+    const requests = service.buildBatchRequests({
+      contacts: [
+        { id: '1', email: 'one@example.com', name: 'One', variables: {} },
+        { id: '2', email: 'two@example.com', name: 'Two', variables: {} },
+        { id: '3', email: 'one@example.com', name: 'One Duplicate', variables: {} }
+      ],
+      template: {
+        mode: 'local',
+        html: '<p>Ola</p>',
+        text: '',
+        subject: ''
+      },
+      config: {
+        ...baseConfig,
+        sendMode: 'shared_bcc',
+        enablePersonalization: false,
+        visibleToEmail: 'one@example.com',
+        ccListText: 'two@example.com; apoio@example.com',
+        bccListText: 'two@example.com; oculto@example.com'
+      },
+      campaignId: 'cmp-5',
+      batchIndex: 1
+    });
+
+    const personalization = requests[0].payload.personalizations[0];
+
+    expect(requests[0].contacts).toHaveLength(2);
+    expect(personalization.to.map((item) => item.email)).toEqual(['one@example.com']);
+    expect(personalization.cc.map((item) => item.email)).toEqual([
+      'two@example.com',
+      'apoio@example.com'
+    ]);
+    expect(personalization.bcc.map((item) => item.email)).toEqual(['oculto@example.com']);
+  });
+
+  it('removes fixed BCC duplicates when they overlap the main recipient', () => {
+    const requests = service.buildBatchRequests({
+      contacts: [{ id: '1', email: 'one@example.com', name: 'One', variables: {} }],
+      template: {
+        mode: 'local',
+        html: '<p>Ola {{name}}</p>',
+        text: '',
+        subject: ''
+      },
+      config: {
+        ...baseConfig,
+        bccListText: 'one@example.com; auditoria@example.com'
+      },
+      campaignId: 'cmp-6',
+      batchIndex: 1
+    });
+
+    expect(requests[0].payload.personalizations[0].bcc.map((item) => item.email)).toEqual([
+      'auditoria@example.com'
+    ]);
+  });
+
   it('adds ASM group when configured', () => {
     const requests = service.buildBatchRequests({
       contacts,
