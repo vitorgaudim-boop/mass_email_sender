@@ -32,33 +32,6 @@ function buildAvailableFields(contacts) {
   return Array.from(fieldSet).sort((left, right) => left.localeCompare(right));
 }
 
-function countEligibleContacts(contacts, selectedGroupIds = []) {
-  const seenEmails = new Set();
-
-  return contacts
-    .filter((contact) => {
-      if (!contact.isValid || contact.excluded) {
-        return false;
-      }
-
-      if (!selectedGroupIds.length) {
-        return true;
-      }
-
-      return (contact.groups || []).some((group) => selectedGroupIds.includes(group.id));
-    })
-    .filter((contact) => {
-      const emailKey = String(contact.email ?? '').trim().toLowerCase();
-
-      if (!emailKey || seenEmails.has(emailKey)) {
-        return false;
-      }
-
-      seenEmails.add(emailKey);
-      return true;
-    }).length;
-}
-
 export function App() {
   const desktopApi = typeof window !== 'undefined' ? window.envioApi : undefined;
   const [activeScreen, setActiveScreen] = useState('contacts');
@@ -89,11 +62,8 @@ export function App() {
     sampleContact: null,
     results: []
   });
+  const [eligibleContactsCount, setEligibleContactsCount] = useState(0);
   const availableFields = useMemo(() => buildAvailableFields(contacts), [contacts]);
-  const eligibleContactsCount = useMemo(
-    () => countEligibleContacts(contacts, configDraft.selectedGroupIds || []),
-    [contacts, configDraft.selectedGroupIds]
-  );
 
   if (!desktopApi || typeof desktopApi.getBootstrap !== 'function') {
     return (
@@ -133,6 +103,7 @@ export function App() {
           setContactGroups(bootstrap.contactGroups || []);
           setTemplateDraft(bootstrap.templateDraft || DEFAULT_TEMPLATE_DRAFT);
           setConfigDraft(bootstrap.configDraft || DEFAULT_SEND_CONFIG);
+          setEligibleContactsCount(bootstrap.eligibleContactsCount || 0);
           setHistory(bootstrap.history || []);
           if (bootstrap.history?.[0]?.id) {
             setSelectedCampaignId(bootstrap.history[0].id);
@@ -221,6 +192,33 @@ export function App() {
 
     return () => clearTimeout(timer);
   }, [templateDraft, configDraft, busyState.bootstrapping]);
+
+  useEffect(() => {
+    if (busyState.bootstrapping) {
+      return undefined;
+    }
+
+    let active = true;
+
+    desktopApi
+      .getEligibleCount(configDraft.selectedGroupIds || [])
+      .then((count) => {
+        if (active) {
+          setEligibleContactsCount(count || 0);
+        }
+      })
+      .catch(() => {});
+
+    return () => {
+      active = false;
+    };
+  }, [
+    busyState.bootstrapping,
+    desktopApi,
+    configDraft.selectedGroupIds,
+    contacts,
+    contactGroups
+  ]);
 
   async function refreshHistory(focusCampaignId = '') {
     const nextHistory = await desktopApi.getHistory();

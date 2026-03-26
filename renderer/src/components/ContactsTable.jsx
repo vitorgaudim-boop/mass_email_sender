@@ -432,8 +432,11 @@ export function ContactsTable({
             </div>
           ) : (
             <div className="empty-state">
-              <strong>Nenhum contato carregado ainda</strong>
-              <p>Importe um arquivo `.xlsx` para visualizar a base atual.</p>
+              <strong>Nenhuma lista temporária carregada agora</strong>
+              <p>
+                Importe um arquivo `.xlsx` para visualizar a base atual. Os grupos persistidos
+                continuam salvos e ainda podem ser usados no disparo.
+              </p>
             </div>
           )}
         </div>

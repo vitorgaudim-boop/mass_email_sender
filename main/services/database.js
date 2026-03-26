@@ -2,6 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 import { randomUUID } from 'node:crypto';
+import { isValidEmail } from './validation.js';
 
 function now() {
   return new Date().toISOString();
@@ -242,7 +243,7 @@ export class DatabaseService {
       email: row.email,
       name: row.name || '',
       variables: parseJson(row.variables_json, {}),
-      groups: membershipMap.get(row.email) || [],
+      groups: membershipMap.get(normalizeEmailKey(row.email)) || [],
       isValid: Boolean(row.is_valid),
       validationError: row.validation_error || '',
       excluded: Boolean(row.excluded),
@@ -272,15 +273,78 @@ export class DatabaseService {
     this.db.exec('DELETE FROM import_sessions;');
   }
 
+  buildTempContactIndex() {
+    const index = new Map();
+
+    for (const contact of this.listTempContacts()) {
+      const emailKey = normalizeEmailKey(contact.email);
+
+      if (!emailKey || index.has(emailKey)) {
+        continue;
+      }
+
+      index.set(emailKey, {
+        ...contact,
+        email: emailKey
+      });
+    }
+
+    return index;
+  }
+
+  listPersistedGroupContacts(groupIds = []) {
+    if (!groupIds.length) {
+      return [];
+    }
+
+    const placeholders = groupIds.map(() => '?').join(', ');
+    const rows = this.db.prepare(`
+      SELECT DISTINCT email, name, created_at
+      FROM contact_group_members
+      WHERE group_id IN (${placeholders})
+      ORDER BY created_at ASC
+    `).all(...groupIds);
+    const tempContactIndex = this.buildTempContactIndex();
+    const uniqueContacts = [];
+    const seenEmails = new Set();
+
+    for (const row of rows) {
+      const emailKey = normalizeEmailKey(row.email);
+
+      if (!emailKey || seenEmails.has(emailKey)) {
+        continue;
+      }
+
+      const tempContact = tempContactIndex.get(emailKey);
+      const fallbackValid = isValidEmail(emailKey);
+      const isEligible = tempContact ? tempContact.isValid && !tempContact.excluded : fallbackValid;
+
+      if (!isEligible) {
+        continue;
+      }
+
+      seenEmails.add(emailKey);
+      uniqueContacts.push({
+        id: tempContact?.id || `group:${emailKey}`,
+        email: emailKey,
+        name: tempContact?.name || row.name || '',
+        variables: tempContact?.variables || {}
+      });
+    }
+
+    return uniqueContacts;
+  }
+
   getEligibleContacts(groupIds = []) {
-    const allowedEmails =
-      Array.isArray(groupIds) && groupIds.length ? this.listGroupMemberEmails(groupIds) : null;
+    if (Array.isArray(groupIds) && groupIds.length) {
+      return this.listPersistedGroupContacts(groupIds);
+    }
+
     const uniqueContacts = [];
     const seenEmails = new Set();
 
     for (const contact of this.listTempContacts()
       .filter((contact) => contact.isValid && !contact.excluded)
-      .filter((contact) => (allowedEmails ? allowedEmails.has(contact.email) : true))
       .map((contact) => ({
         id: contact.id,
         email: contact.email,
@@ -303,13 +367,19 @@ export class DatabaseService {
     return uniqueContacts;
   }
 
+  countEligibleContacts(groupIds = []) {
+    return this.getEligibleContacts(groupIds).length;
+  }
+
   listContactGroups() {
     const groups = this.db.prepare(`
       SELECT id, name, description, created_at, updated_at
       FROM contact_groups
       ORDER BY name COLLATE NOCASE ASC
     `).all();
-    const currentEmails = new Set(this.listTempContacts().map((contact) => contact.email));
+    const currentEmails = new Set(
+      this.listTempContacts().map((contact) => normalizeEmailKey(contact.email)).filter(Boolean)
+    );
     const memberCounts = this.db.prepare(`
       SELECT group_id, email
       FROM contact_group_members
@@ -323,7 +393,7 @@ export class DatabaseService {
         currentContactsCount: 0
       };
       current.memberCount += 1;
-      if (currentEmails.has(membership.email)) {
+      if (currentEmails.has(normalizeEmailKey(membership.email))) {
         current.currentContactsCount += 1;
       }
       summaryMap.set(membership.group_id, current);
@@ -378,7 +448,12 @@ export class DatabaseService {
         continue;
       }
 
-      insert.run(groupId, contact.email, contact.name || '', timestamp);
+      const emailKey = normalizeEmailKey(contact.email);
+      if (!emailKey) {
+        continue;
+      }
+
+      insert.run(groupId, emailKey, contact.name || '', timestamp);
     }
 
     this.db.prepare(`UPDATE contact_groups SET updated_at = ? WHERE id = ?`).run(timestamp, groupId);
@@ -401,7 +476,12 @@ export class DatabaseService {
         continue;
       }
 
-      remove.run(groupId, contact.email);
+      const emailKey = normalizeEmailKey(contact.email);
+      if (!emailKey) {
+        continue;
+      }
+
+      remove.run(groupId, emailKey);
     }
 
     this.db.prepare(`UPDATE contact_groups SET updated_at = ? WHERE id = ?`).run(timestamp, groupId);
@@ -424,11 +504,11 @@ export class DatabaseService {
       WHERE group_id IN (${placeholders})
     `).all(...groupIds);
 
-    return new Set(rows.map((row) => row.email));
+    return new Set(rows.map((row) => normalizeEmailKey(row.email)).filter(Boolean));
   }
 
   getContactGroupMap(emails = []) {
-    const filteredEmails = Array.from(new Set(emails.filter(Boolean)));
+    const filteredEmails = Array.from(new Set(emails.map((email) => normalizeEmailKey(email)).filter(Boolean)));
     const map = new Map();
 
     if (!filteredEmails.length) {
@@ -445,12 +525,13 @@ export class DatabaseService {
     `).all(...filteredEmails);
 
     for (const row of rows) {
-      const current = map.get(row.email) || [];
+      const emailKey = normalizeEmailKey(row.email);
+      const current = map.get(emailKey) || [];
       current.push({
         id: row.group_id,
         name: row.name
       });
-      map.set(row.email, current);
+      map.set(emailKey, current);
     }
 
     return map;

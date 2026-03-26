@@ -17,7 +17,12 @@ export default defineConfig({
   test: {
     environment: 'jsdom',
     setupFiles: path.resolve(__dirname, 'test', 'setup.js'),
-    include: ['../test/**/*.{test,spec}.js']
+    include: ['../test/**/*.{test,spec}.js'],
+    server: {
+      deps: {
+        external: ['node:sqlite', 'sqlite']
+      }
+    }
   },
   resolve: {
     alias: {

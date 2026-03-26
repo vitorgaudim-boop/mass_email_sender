@@ -27,6 +27,8 @@ function normalizeConfigPayload(config = {}) {
 }
 
 function buildBootstrap(database) {
+  const configDraft = normalizeConfigPayload(database.getConfigDraft() || {});
+
   return {
     contacts: database.listTempContacts(),
     contactGroups: database.listContactGroups(),
@@ -34,7 +36,8 @@ function buildBootstrap(database) {
       ...DEFAULT_TEMPLATE_DRAFT,
       ...(database.getTemplateDraft() || {})
     }),
-    configDraft: normalizeConfigPayload(database.getConfigDraft() || {}),
+    configDraft,
+    eligibleContactsCount: database.countEligibleContacts(configDraft.selectedGroupIds || []),
     history: database.listCampaignHistory()
   };
 }
@@ -123,6 +126,10 @@ export function registerIpcHandlers({ database, queueManager }) {
     database.clearTempContacts();
     return [];
   });
+
+  ipcMain.handle('contacts:eligible-count', async (_event, groupIds = []) =>
+    database.countEligibleContacts(groupIds || [])
+  );
 
   ipcMain.handle('groups:list', async () => database.listContactGroups());
 
@@ -227,6 +234,18 @@ export function registerIpcHandlers({ database, queueManager }) {
     const uniqueContacts = queueManager.emailService.normalizeContactsForSend(contacts);
     if (queueManager.getCurrentCampaign()) {
       throw new Error('Ja existe uma campanha em andamento.');
+    }
+
+    if (!uniqueContacts.length) {
+      if ((normalizedConfig.selectedGroupIds || []).length) {
+        throw new Error(
+          'Os grupos selecionados nao tem contatos validos disponiveis para envio. Revise os grupos ativos ou reimporte a base.'
+        );
+      }
+
+      throw new Error(
+        'Nao ha contatos elegiveis para envio. Importe uma base ou selecione um grupo com contatos validos.'
+      );
     }
 
     queueManager.emailService.validateConfig(normalizedConfig, template, uniqueContacts);

@@ -13,6 +13,7 @@ contextBridge.exposeInMainWorld('envioApi', {
   removeContacts: (ids) => ipcRenderer.invoke('contacts:remove', ids),
   excludeContacts: (ids, excluded) => ipcRenderer.invoke('contacts:exclude', ids, excluded),
   clearContacts: () => ipcRenderer.invoke('contacts:clear'),
+  getEligibleCount: (groupIds) => ipcRenderer.invoke('contacts:eligible-count', groupIds),
   listGroups: () => ipcRenderer.invoke('groups:list'),
   createGroup: (payload) => ipcRenderer.invoke('groups:create', payload),
   deleteGroup: (groupId) => ipcRenderer.invoke('groups:delete', groupId),

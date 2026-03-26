@@ -44,7 +44,9 @@ export function SendScreen({
             <h3>Prévia final, teste e envio</h3>
             <p className="section-copy">
               Esta é a última checagem antes do envio. Aqui você confirma público, assunto,
-              unsubscribe visível na prévia e dispara a campanha.
+              unsubscribe visível na prévia e dispara a campanha. Se houver grupos ativos, a
+              contagem já considera os membros persistidos desses grupos, mesmo sem uma planilha
+              temporária carregada na tela de contatos.
             </p>
           </div>
           <button className="primary-button" onClick={onStartCampaign} disabled={startingCampaign}>
