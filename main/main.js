@@ -57,6 +57,43 @@ function createWindow() {
     return { action: 'deny' };
   });
 
+  mainWindow.webContents.on('did-fail-load', (_event, errorCode, errorDescription, validatedURL) => {
+    console.error('Renderer load failed:', {
+      errorCode,
+      errorDescription,
+      validatedURL
+    });
+  });
+
+  mainWindow.webContents.on('render-process-gone', (_event, details) => {
+    console.error('Renderer process gone:', details);
+  });
+
+  mainWindow.webContents.on('console-message', (_event, level, message, line, sourceId) => {
+    console.log('Renderer console:', {
+      level,
+      message,
+      line,
+      sourceId
+    });
+  });
+
+  mainWindow.webContents.on('did-finish-load', async () => {
+    try {
+      const diagnostics = await mainWindow.webContents.executeJavaScript(`
+        ({
+          hasEnvioApi: typeof window.envioApi,
+          rootExists: Boolean(document.getElementById('root')),
+          rootHtmlLength: document.getElementById('root')?.innerHTML?.length ?? 0,
+          documentTitle: document.title
+        })
+      `);
+      console.log('Renderer diagnostics:', diagnostics);
+    } catch (error) {
+      console.error('Renderer diagnostics failed:', error);
+    }
+  });
+
   mainWindow.webContents.on('will-navigate', (event) => {
     event.preventDefault();
   });

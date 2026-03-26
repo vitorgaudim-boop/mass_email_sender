@@ -44,6 +44,10 @@ button {
   min-height: 100vh;
 }
 
+.fallback-shell {
+  grid-template-columns: 1fr;
+}
+
 .sidebar {
   background:
     linear-gradient(165deg, rgba(191, 0, 0, 0.95), rgba(120, 0, 0, 0.93)),

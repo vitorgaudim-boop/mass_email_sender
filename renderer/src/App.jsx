@@ -20,6 +20,7 @@ function buildAvailableFields(contacts) {
 }
 
 export function App() {
+  const desktopApi = typeof window !== 'undefined' ? window.envioApi : undefined;
   const [activeScreen, setActiveScreen] = useState('contacts');
   const [contacts, setContacts] = useState([]);
   const [templateDraft, setTemplateDraft] = useState(DEFAULT_TEMPLATE_DRAFT);
@@ -49,10 +50,33 @@ export function App() {
   });
   const availableFields = useMemo(() => buildAvailableFields(contacts), [contacts]);
 
+  if (!desktopApi || typeof desktopApi.getBootstrap !== 'function') {
+    return (
+      <div className="app-shell fallback-shell">
+        <main className="workspace">
+          <section className="panel">
+            <p className="eyebrow">Desktop bridge error</p>
+            <h1>Envio de Email</h1>
+            <p className="workspace-copy">
+              A interface carregou, mas a camada desktop do Electron nao ficou disponivel.
+            </p>
+            <div className="note-block">
+              <strong>O que verificar</strong>
+              <p>
+                Reinstale o app usando o instalador mais recente e garanta que voce abriu `Envio de
+                Email Setup 1.0.0.exe`, nao a versao antiga `Envio de Cupons`.
+              </p>
+            </div>
+          </section>
+        </main>
+      </div>
+    );
+  }
+
   useEffect(() => {
     let isMounted = true;
 
-    window.envioApi
+    desktopApi
       .getBootstrap()
       .then((bootstrap) => {
         if (!isMounted) {
@@ -78,7 +102,7 @@ export function App() {
         }
       });
 
-    const unsubscribeProgress = window.envioApi.onProgress((payload) => {
+    const unsubscribeProgress = desktopApi.onProgress((payload) => {
       setCampaignProgress(payload);
 
       if (FINAL_STATUSES.has(payload.status)) {
@@ -89,11 +113,11 @@ export function App() {
       }
     });
 
-    const unsubscribeLog = window.envioApi.onLog((payload) => {
+    const unsubscribeLog = desktopApi.onLog((payload) => {
       setCampaignLogs((current) => [payload, ...current].slice(0, 250));
     });
 
-    const unsubscribeError = window.envioApi.onError((payload) => {
+    const unsubscribeError = desktopApi.onError((payload) => {
       setNotice({ type: 'error', message: payload.message });
       setBusyState((current) => ({ ...current, startingCampaign: false }));
     });
@@ -112,7 +136,7 @@ export function App() {
     }
 
     const timer = setTimeout(() => {
-      window.envioApi.saveConfig(configDraft).catch(() => {});
+      desktopApi.saveConfig(configDraft).catch(() => {});
     }, 500);
 
     return () => clearTimeout(timer);
@@ -124,14 +148,14 @@ export function App() {
     }
 
     const timer = setTimeout(() => {
-      window.envioApi.saveTemplate(templateDraft).catch(() => {});
+      desktopApi.saveTemplate(templateDraft).catch(() => {});
     }, 600);
 
     return () => clearTimeout(timer);
   }, [templateDraft, busyState.bootstrapping]);
 
   async function refreshHistory(focusCampaignId = '') {
-    const nextHistory = await window.envioApi.getHistory();
+    const nextHistory = await desktopApi.getHistory();
     startTransition(() => {
       setHistory(nextHistory);
       if (focusCampaignId) {
@@ -145,7 +169,7 @@ export function App() {
       return;
     }
 
-    const nextDetails = await window.envioApi.getCampaignResults(campaignId);
+    const nextDetails = await desktopApi.getCampaignResults(campaignId);
     startTransition(() => {
       setSelectedCampaignId(campaignId);
       setReportDetails(nextDetails);
@@ -156,7 +180,7 @@ export function App() {
     setBusyState((current) => ({ ...current, importingContacts: true }));
 
     try {
-      const payload = await window.envioApi.importContacts();
+      const payload = await desktopApi.importContacts();
       if (!payload) {
         return;
       }
@@ -180,7 +204,7 @@ export function App() {
     setBusyState((current) => ({ ...current, importingTemplate: true }));
 
     try {
-      const template = await window.envioApi.importTemplate();
+      const template = await desktopApi.importTemplate();
       if (!template) {
         return;
       }
@@ -214,7 +238,7 @@ export function App() {
 
   async function handlePreviewTemplate() {
     try {
-      const preview = await window.envioApi.previewTemplate({
+      const preview = await desktopApi.previewTemplate({
         template: templateDraft,
         config: configDraft
       });
@@ -231,7 +255,7 @@ export function App() {
     setBusyState((current) => ({ ...current, sendingTest: true }));
 
     try {
-      const payload = await window.envioApi.sendTest({
+      const payload = await desktopApi.sendTest({
         config: configDraft,
         template: templateDraft,
         recipientsText: testState.recipientsText
@@ -258,7 +282,7 @@ export function App() {
     setCampaignLogs([]);
 
     try {
-      const response = await window.envioApi.startCampaign({
+      const response = await desktopApi.startCampaign({
         config: configDraft,
         template: templateDraft
       });
@@ -276,7 +300,7 @@ export function App() {
 
   async function handleExportReport(campaignId) {
     try {
-      const filePath = await window.envioApi.exportReport(campaignId);
+      const filePath = await desktopApi.exportReport(campaignId);
       if (!filePath) {
         return;
       }
@@ -289,7 +313,7 @@ export function App() {
 
   async function handlePurgeCampaign(campaignId) {
     try {
-      const nextHistory = await window.envioApi.purgeCampaignDetails(campaignId);
+      const nextHistory = await desktopApi.purgeCampaignDetails(campaignId);
       startTransition(() => {
         setHistory(nextHistory);
         setReportDetails((current) => ({ ...current, results: [] }));
@@ -336,14 +360,14 @@ export function App() {
               contacts={contacts}
               onImportContacts={handleImportContacts}
               onClearContacts={() =>
-                handleContactMutation(() => window.envioApi.clearContacts(), 'Contatos temporarios removidos.')
+                handleContactMutation(() => desktopApi.clearContacts(), 'Contatos temporarios removidos.')
               }
               onRemoveContacts={(ids) =>
-                handleContactMutation(() => window.envioApi.removeContacts(ids), 'Linhas removidas com sucesso.')
+                handleContactMutation(() => desktopApi.removeContacts(ids), 'Linhas removidas com sucesso.')
               }
               onExcludeContacts={(ids, excluded) =>
                 handleContactMutation(
-                  () => window.envioApi.excludeContacts(ids, excluded),
+                  () => desktopApi.excludeContacts(ids, excluded),
                   excluded ? 'Linhas excluidas do envio.' : 'Linhas reativadas para envio.'
                 )
               }
@@ -379,9 +403,9 @@ export function App() {
             <DashboardScreen
               progress={campaignProgress}
               logs={campaignLogs}
-              onPause={() => window.envioApi.pauseCampaign().catch((error) => setNotice({ type: 'error', message: error.message }))}
-              onResume={() => window.envioApi.resumeCampaign().catch((error) => setNotice({ type: 'error', message: error.message }))}
-              onCancel={() => window.envioApi.cancelCampaign().catch((error) => setNotice({ type: 'error', message: error.message }))}
+              onPause={() => desktopApi.pauseCampaign().catch((error) => setNotice({ type: 'error', message: error.message }))}
+              onResume={() => desktopApi.resumeCampaign().catch((error) => setNotice({ type: 'error', message: error.message }))}
+              onCancel={() => desktopApi.cancelCampaign().catch((error) => setNotice({ type: 'error', message: error.message }))}
             />
           ) : null}
 
