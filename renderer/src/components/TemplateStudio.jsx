@@ -225,6 +225,16 @@ export function TemplateStudio({
               <div className="template-compose-stack">
                 <div className="template-form-row">
                   <label>
+                    <span>Texto curto do header</span>
+                    <input
+                      className="input-field"
+                      value={templateDraft.composer?.eyebrow || ''}
+                      onChange={(event) => updateComposerField('eyebrow', event.target.value)}
+                      placeholder="Ex.: Campanha"
+                    />
+                  </label>
+
+                  <label>
                     <span>Título do email</span>
                     <input
                       className="input-field"
@@ -234,6 +244,9 @@ export function TemplateStudio({
                     />
                   </label>
 
+                </div>
+
+                <div className="template-form-row">
                   <label>
                     <span>Linha de apoio</span>
                     <input
@@ -243,9 +256,7 @@ export function TemplateStudio({
                       placeholder="Ex.: Use este espaço para resumir o contexto do email."
                     />
                   </label>
-                </div>
 
-                <div className="template-form-row">
                   <label>
                     <span>Fonte do template inteiro</span>
                     <select
@@ -261,12 +272,6 @@ export function TemplateStudio({
                     </select>
                   </label>
 
-                  <div className="note-block compact-note">
-                    <strong>Fonte global</strong>
-                    <p>
-                      A fonte escolhida aqui vale para título, subtítulo, corpo, botão e assinatura.
-                    </p>
-                  </div>
                 </div>
 
                 <section className="template-editor-panel">
@@ -326,7 +331,8 @@ export function TemplateStudio({
                   <strong>Fluxo recomendado</strong>
                   <p>
                     1. Escolha a moldura visual. 2. Escreva o conteúdo no editor rico. 3. Defina o
-                    assunto na tela de configuração. 4. Atualize a prévia e envie um teste.
+                    assunto na tela de configuração. 4. Revise a prévia com unsubscribe e envie um
+                    teste na tela de disparo.
                   </p>
                 </div>
               </div>

@@ -65,10 +65,11 @@ function normalizeSignature(signature) {
 function buildShellHtml(shell, composer) {
   const fontFamily = composer.fontFamily || DEFAULT_TEMPLATE_FONT_FAMILY;
   const logoSource = shell.useWhiteLogo ? '{{brand_logo_white_url}}' : '{{brand_logo_url}}';
-  const eyebrowHtml = shell.eyebrow
+  const eyebrowText = composer.eyebrow || shell.eyebrow || '';
+  const eyebrowHtml = eyebrowText
     ? `
       <p style="margin:0 0 12px; font-size:12px; line-height:1.4; letter-spacing:0.18em; text-transform:uppercase; color:${shell.eyebrowColor}; font-family:${fontFamily};">
-        ${shell.eyebrow}
+        ${escapeHtmlPreservingVariables(eyebrowText)}
       </p>
     `
     : '';
@@ -107,6 +108,17 @@ function buildShellHtml(shell, composer) {
         </div>
       `
       : '';
+  const footerHtml = shell.footerNote
+    ? `
+            <tr>
+              <td style="padding:16px 36px 22px; background:${shell.footerBackground}; color:${shell.footerColor};">
+                <p style="margin:0; font-size:12px; line-height:1.62; font-family:${fontFamily};">
+                  ${shell.footerNote}
+                </p>
+              </td>
+            </tr>
+      `
+    : '';
 
   return `<!doctype html>
 <html lang="pt-BR">
@@ -147,13 +159,7 @@ function buildShellHtml(shell, composer) {
                 </div>
               </td>
             </tr>
-            <tr>
-              <td style="padding:16px 36px 22px; background:${shell.footerBackground}; color:${shell.footerColor};">
-                <p style="margin:0; font-size:12px; line-height:1.62; font-family:${fontFamily};">
-                  ${shell.footerNote}
-                </p>
-              </td>
-            </tr>
+            ${footerHtml}
           </table>
         </td>
       </tr>
@@ -171,6 +177,7 @@ function createDefaultComposer(template) {
     ctaLabel: '',
     ctaUrl: DEFAULT_CTA_URL,
     signature: 'Equipe {{brand_name}}',
+    eyebrow: template.defaultEyebrow || template.eyebrow || '',
     fontFamily: DEFAULT_TEMPLATE_FONT_FAMILY
   };
 }
@@ -211,8 +218,7 @@ export const BUILT_IN_TEMPLATES = [
     footerColor: '#6d6174',
     frameBorder: '1px solid #ebe5ef',
     frameShadow: '0 22px 56px rgba(71, 31, 98, 0.08)',
-    footerNote:
-      'Envio realizado por {{brand_name}}. Quando o unsubscribe estiver ligado na configuração, o link aparecerá automaticamente no rodapé do email.',
+    footerNote: '',
     defaultHeadline: 'Atualização importante para sua operação',
     defaultIntro: ''
   },
@@ -246,7 +252,7 @@ export const BUILT_IN_TEMPLATES = [
     footerColor: '#675978',
     frameBorder: '1px solid #e7dbf5',
     frameShadow: '0 24px 56px rgba(63, 17, 97, 0.12)',
-    footerNote: 'Ideal para emails promocionais, lançamentos e convites para ação.',
+    footerNote: '',
     defaultHeadline: 'Destaque sua mensagem principal',
     defaultIntro: 'Use este shell quando você quiser um topo marcante, sem perder leitura.'
   },
@@ -284,7 +290,7 @@ export const BUILT_IN_TEMPLATES = [
     footerColor: '#6c6075',
     frameBorder: '1px solid #ece4f2',
     frameShadow: '0 16px 38px rgba(66, 23, 92, 0.06)',
-    footerNote: 'Use esta base para comunicação operacional, financeira ou de compliance.',
+    footerNote: '',
     defaultHeadline: 'Explique a atualização com clareza',
     defaultIntro: 'Estrutura enxuta e profissional para informações importantes.'
   },
@@ -318,7 +324,7 @@ export const BUILT_IN_TEMPLATES = [
     footerColor: '#655976',
     frameBorder: '1px solid #e5d8f4',
     frameShadow: '0 20px 48px rgba(76, 24, 116, 0.12)',
-    footerNote: 'Bom para emails de campanha, benefício, cupom ou comunicação de lançamento.',
+    footerNote: '',
     defaultHeadline: 'Convide o destinatário a agir',
     defaultIntro: 'Ideal para quando o botão é parte importante do resultado.'
   },
@@ -351,8 +357,7 @@ export const BUILT_IN_TEMPLATES = [
     footerColor: '#73687c',
     frameBorder: '1px solid #eee8f3',
     frameShadow: '0 14px 32px rgba(65, 24, 92, 0.05)',
-    footerNote:
-      'Base mais discreta para emails que precisam parecer diretos, sérios e corporativos.',
+    footerNote: '',
     defaultHeadline: 'Seu email direto ao ponto',
     defaultIntro: ''
   }

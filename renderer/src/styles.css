@@ -265,7 +265,8 @@ button {
 .template-grid,
 .config-grid,
 .dashboard-grid,
-.report-grid {
+.report-grid,
+.send-grid {
   display: grid;
   gap: 22px;
   min-height: 0;
@@ -275,8 +276,13 @@ button {
 .template-grid,
 .config-grid,
 .dashboard-grid,
-.report-grid {
+.report-grid,
+.send-grid {
   grid-template-columns: minmax(0, 1.18fr) minmax(340px, 0.92fr);
+}
+
+.single-panel-grid {
+  grid-template-columns: 1fr;
 }
 
 .panel {
@@ -388,6 +394,75 @@ button {
 .table-shell {
   max-height: 500px;
   overflow: auto;
+}
+
+.contacts-layout {
+  display: grid;
+  grid-template-columns: 300px minmax(0, 1fr);
+  gap: 18px;
+  min-height: 0;
+}
+
+.groups-panel,
+.contacts-main {
+  min-height: 0;
+}
+
+.groups-panel {
+  display: grid;
+  gap: 12px;
+  align-content: start;
+}
+
+.group-create-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+}
+
+.group-list {
+  display: grid;
+  gap: 10px;
+  max-height: 100%;
+  overflow: auto;
+}
+
+.group-card {
+  border-radius: 18px;
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.9);
+  padding: 14px;
+  display: grid;
+  gap: 12px;
+}
+
+.group-card.active {
+  border-color: rgba(133, 41, 205, 0.24);
+  background: linear-gradient(180deg, rgba(241, 228, 255, 0.7), rgba(255, 255, 255, 0.96));
+}
+
+.group-card-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: start;
+}
+
+.group-card-header strong {
+  display: block;
+}
+
+.group-card-header span,
+.group-toggle span {
+  color: var(--muted);
+  line-height: 1.45;
+  font-size: 0.92rem;
+}
+
+.group-toggle {
+  display: flex;
+  gap: 10px;
+  align-items: center;
 }
 
 .data-table {
@@ -525,6 +600,13 @@ textarea.input-field {
 
 .preview-shell {
   margin-top: 20px;
+}
+
+.send-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 18px;
 }
 
 .template-quickstart {
@@ -1099,6 +1181,10 @@ textarea.input-field {
   padding: 24px;
 }
 
+.compact-empty-state {
+  min-height: 160px;
+}
+
 .test-results {
   display: grid;
   gap: 10px;
@@ -1227,7 +1313,9 @@ textarea.input-field {
   .template-grid,
   .config-grid,
   .dashboard-grid,
-  .report-grid {
+  .report-grid,
+  .send-grid,
+  .contacts-layout {
     grid-template-columns: 1fr;
   }
 
@@ -1253,6 +1341,10 @@ textarea.input-field {
   .template-editor-header {
     grid-template-columns: 1fr;
     display: grid;
+  }
+
+  .send-summary-grid {
+    grid-template-columns: 1fr;
   }
 
   .sidebar-summary {

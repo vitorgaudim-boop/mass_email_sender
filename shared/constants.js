@@ -4,7 +4,7 @@ export const DEFAULT_BRAND_NAME = 'Rakuten Advertising';
 export const DEFAULT_BRAND_LOGO_URL =
   'https://rakutenadvertising.com/wp-content/uploads/sites/2/2023/01/RAD_Logo_Hor_RADPurple-9.svg';
 export const DEFAULT_BRAND_LOGO_WHITE_URL =
-  'https://skai.io/wp-content/uploads/2020/12/Rakuten_Advertising_Logo_White_1200x518.svg';
+  'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSBQVyaXbDURzkmplZTQV_-mQwDbi0V6eM8ZQ&s';
 export const DEFAULT_SUBSCRIPTION_TRACKING_TEXT =
   'Para deixar de receber estes emails, use o link de unsubscribe ao final desta mensagem. To stop receiving these emails, use the unsubscribe link at the end of this message.';
 export const DEFAULT_SUBSCRIPTION_TRACKING_HTML =
@@ -17,6 +17,7 @@ export const DEFAULT_SEND_CONFIG = {
   replyToName: '',
   brandName: DEFAULT_BRAND_NAME,
   brandLogoUrl: DEFAULT_BRAND_LOGO_URL,
+  selectedGroupIds: [],
   subject: '',
   batchSize: 200,
   delayMs: 2000,

@@ -65,6 +65,22 @@ export class DatabaseService {
         created_at TEXT NOT NULL
       );
 
+      CREATE TABLE IF NOT EXISTS contact_groups (
+        id TEXT PRIMARY KEY,
+        name TEXT NOT NULL,
+        description TEXT,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL
+      );
+
+      CREATE TABLE IF NOT EXISTS contact_group_members (
+        group_id TEXT NOT NULL,
+        email TEXT NOT NULL,
+        name TEXT,
+        created_at TEXT NOT NULL,
+        PRIMARY KEY (group_id, email)
+      );
+
       CREATE TABLE IF NOT EXISTS campaign_runs (
         id TEXT PRIMARY KEY,
         status TEXT NOT NULL,
@@ -215,12 +231,14 @@ export class DatabaseService {
       FROM temp_contacts
       ORDER BY row_number ASC
     `).all();
+    const membershipMap = this.getContactGroupMap(rows.map((row) => row.email));
 
     return rows.map((row) => ({
       id: row.id,
       email: row.email,
       name: row.name || '',
       variables: parseJson(row.variables_json, {}),
+      groups: membershipMap.get(row.email) || [],
       isValid: Boolean(row.is_valid),
       validationError: row.validation_error || '',
       excluded: Boolean(row.excluded),
@@ -250,20 +268,172 @@ export class DatabaseService {
     this.db.exec('DELETE FROM import_sessions;');
   }
 
-  getEligibleContacts() {
-    const rows = this.db.prepare(`
-      SELECT id, email, name, variables_json
-      FROM temp_contacts
-      WHERE is_valid = 1 AND excluded = 0
-      ORDER BY row_number ASC
-    `).all();
+  getEligibleContacts(groupIds = []) {
+    const allowedEmails =
+      Array.isArray(groupIds) && groupIds.length ? this.listGroupMemberEmails(groupIds) : null;
 
-    return rows.map((row) => ({
-      id: row.id,
-      email: row.email,
-      name: row.name || '',
-      variables: parseJson(row.variables_json, {})
-    }));
+    return this.listTempContacts()
+      .filter((contact) => contact.isValid && !contact.excluded)
+      .filter((contact) => (allowedEmails ? allowedEmails.has(contact.email) : true))
+      .map((contact) => ({
+        id: contact.id,
+        email: contact.email,
+        name: contact.name || '',
+        variables: contact.variables || {}
+      }));
+  }
+
+  listContactGroups() {
+    const groups = this.db.prepare(`
+      SELECT id, name, description, created_at, updated_at
+      FROM contact_groups
+      ORDER BY name COLLATE NOCASE ASC
+    `).all();
+    const currentEmails = new Set(this.listTempContacts().map((contact) => contact.email));
+    const memberCounts = this.db.prepare(`
+      SELECT group_id, email
+      FROM contact_group_members
+      ORDER BY created_at ASC
+    `).all();
+    const summaryMap = new Map();
+
+    for (const membership of memberCounts) {
+      const current = summaryMap.get(membership.group_id) || {
+        memberCount: 0,
+        currentContactsCount: 0
+      };
+      current.memberCount += 1;
+      if (currentEmails.has(membership.email)) {
+        current.currentContactsCount += 1;
+      }
+      summaryMap.set(membership.group_id, current);
+    }
+
+    return groups.map((group) => {
+      const summary = summaryMap.get(group.id) || {
+        memberCount: 0,
+        currentContactsCount: 0
+      };
+
+      return {
+        id: group.id,
+        name: group.name,
+        description: group.description || '',
+        memberCount: summary.memberCount,
+        currentContactsCount: summary.currentContactsCount,
+        createdAt: group.created_at,
+        updatedAt: group.updated_at
+      };
+    });
+  }
+
+  createContactGroup({ name, description = '' }) {
+    const id = randomUUID();
+    const timestamp = now();
+
+    this.db.prepare(`
+      INSERT INTO contact_groups (id, name, description, created_at, updated_at)
+      VALUES (?, ?, ?, ?, ?)
+    `).run(id, name, description, timestamp, timestamp);
+
+    return this.listContactGroups();
+  }
+
+  deleteContactGroup(groupId) {
+    this.db.prepare(`DELETE FROM contact_group_members WHERE group_id = ?`).run(groupId);
+    this.db.prepare(`DELETE FROM contact_groups WHERE id = ?`).run(groupId);
+    return this.listContactGroups();
+  }
+
+  addContactsToGroup(groupId, contacts = []) {
+    const insert = this.db.prepare(`
+      INSERT INTO contact_group_members (group_id, email, name, created_at)
+      VALUES (?, ?, ?, ?)
+      ON CONFLICT(group_id, email) DO UPDATE SET name = excluded.name
+    `);
+    const timestamp = now();
+
+    for (const contact of contacts) {
+      if (!contact?.email) {
+        continue;
+      }
+
+      insert.run(groupId, contact.email, contact.name || '', timestamp);
+    }
+
+    this.db.prepare(`UPDATE contact_groups SET updated_at = ? WHERE id = ?`).run(timestamp, groupId);
+
+    return {
+      groups: this.listContactGroups(),
+      contacts: this.listTempContacts()
+    };
+  }
+
+  removeContactsFromGroup(groupId, contacts = []) {
+    const remove = this.db.prepare(`
+      DELETE FROM contact_group_members
+      WHERE group_id = ? AND email = ?
+    `);
+    const timestamp = now();
+
+    for (const contact of contacts) {
+      if (!contact?.email) {
+        continue;
+      }
+
+      remove.run(groupId, contact.email);
+    }
+
+    this.db.prepare(`UPDATE contact_groups SET updated_at = ? WHERE id = ?`).run(timestamp, groupId);
+
+    return {
+      groups: this.listContactGroups(),
+      contacts: this.listTempContacts()
+    };
+  }
+
+  listGroupMemberEmails(groupIds = []) {
+    if (!groupIds.length) {
+      return new Set();
+    }
+
+    const placeholders = groupIds.map(() => '?').join(', ');
+    const rows = this.db.prepare(`
+      SELECT DISTINCT email
+      FROM contact_group_members
+      WHERE group_id IN (${placeholders})
+    `).all(...groupIds);
+
+    return new Set(rows.map((row) => row.email));
+  }
+
+  getContactGroupMap(emails = []) {
+    const filteredEmails = Array.from(new Set(emails.filter(Boolean)));
+    const map = new Map();
+
+    if (!filteredEmails.length) {
+      return map;
+    }
+
+    const placeholders = filteredEmails.map(() => '?').join(', ');
+    const rows = this.db.prepare(`
+      SELECT members.email, groups.id AS group_id, groups.name
+      FROM contact_group_members members
+      INNER JOIN contact_groups groups ON groups.id = members.group_id
+      WHERE members.email IN (${placeholders})
+      ORDER BY groups.name COLLATE NOCASE ASC
+    `).all(...filteredEmails);
+
+    for (const row of rows) {
+      const current = map.get(row.email) || [];
+      current.push({
+        id: row.group_id,
+        name: row.name
+      });
+      map.set(row.email, current);
+    }
+
+    return map;
   }
 
   createCampaignRun(config, templateSummary, totalContacts) {

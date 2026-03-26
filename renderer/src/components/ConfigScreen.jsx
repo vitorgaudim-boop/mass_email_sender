@@ -1,14 +1,4 @@
-export function ConfigScreen({
-  configDraft,
-  onChangeConfig,
-  campaignIsActive,
-  onSendTest,
-  onStartCampaign,
-  testState,
-  setTestState,
-  sendingTest,
-  startingCampaign
-}) {
+export function ConfigScreen({ configDraft, onChangeConfig }) {
   const personalizationLocked = configDraft.sendMode === 'shared_bcc';
 
   function updateField(key, value) {
@@ -26,24 +16,17 @@ export function ConfigScreen({
   }
 
   return (
-    <section className="config-grid config-screen-grid">
-      <article className="panel">
+    <section className="config-grid config-screen-grid single-panel-grid">
+      <article className="panel panel-wide">
         <div className="panel-header">
           <div>
             <p className="eyebrow">3. Configuração</p>
-            <h3>Remetente, marca e regras de envio</h3>
+            <h3>Identidade, remetente e regras de envio</h3>
             <p className="section-copy">
-              Primeiro defina a identidade do email. Depois revise o remetente, o assunto e a forma
-              de disparo.
+              Esta etapa fica só para ajuste de campanha. Teste, prévia final e início do envio
+              agora ficam na tela de <strong>Disparo</strong>.
             </p>
           </div>
-          <button
-            className="primary-button"
-            onClick={onStartCampaign}
-            disabled={campaignIsActive || startingCampaign}
-          >
-            {startingCampaign ? 'Iniciando...' : 'Iniciar campanha'}
-          </button>
         </div>
 
         <div className="config-sections">
@@ -73,15 +56,6 @@ export function ConfigScreen({
                   placeholder="https://rakutenadvertising.com/..."
                 />
               </label>
-            </div>
-
-            <div className="note-block compact-note">
-              <strong>Onde isso entra</strong>
-              <p>
-                O nome da marca entra automaticamente no topo e na assinatura. A logo entra no
-                cabeçalho do email. Para melhor compatibilidade nos clientes de email, prefira PNG
-                ou JPG se você tiver essa opção.
-              </p>
             </div>
           </section>
 
@@ -241,7 +215,7 @@ export function ConfigScreen({
                 />
                 <div>
                   <strong>Unsubscribe padrão</strong>
-                  <p>Deixa o opt-out ativo por padrão em todos os envios.</p>
+                  <p>O bloco fica visível na prévia final da tela de disparo.</p>
                 </div>
               </label>
 
@@ -262,14 +236,6 @@ export function ConfigScreen({
           <details className="advanced-panel">
             <summary>Opções avançadas</summary>
             <div className="advanced-panel-body">
-              <div className="note-block compact-note">
-                <strong>Você pode ignorar esta parte</strong>
-                <p>
-                  Se você não usa CC fixo, BCC fixo, suppression groups, timeout customizado ou
-                  headers extras, deixe tudo abaixo em branco.
-                </p>
-              </div>
-
               <div className="form-grid two-columns">
                 <label>
                   <span>CC fixo</span>
@@ -314,15 +280,6 @@ export function ConfigScreen({
                     }
                   />
                 </label>
-              </div>
-
-              <div className="note-block compact-note">
-                <strong>Variáveis prontas da marca</strong>
-                <p>
-                  Você pode usar <code>{'{{brand_logo_url}}'}</code> e{' '}
-                  <code>{'{{brand_name}}'}</code> em qualquer template. Se sua conta usa
-                  suppression groups no SendGrid, preencha o ASM Group ID.
-                </p>
               </div>
 
               <div className="form-grid">
@@ -376,63 +333,6 @@ export function ConfigScreen({
               </div>
             </div>
           </details>
-        </div>
-      </article>
-
-      <article className="panel test-panel">
-        <div className="panel-header">
-          <div>
-            <p className="eyebrow">4. Teste</p>
-            <h3>Valide antes do disparo</h3>
-          </div>
-          <button className="ghost-button" onClick={onSendTest} disabled={sendingTest}>
-            {sendingTest ? 'Enviando...' : 'Enviar teste'}
-          </button>
-        </div>
-
-        <label>
-          <span>Emails de teste</span>
-          <textarea
-            className="input-field"
-            value={testState.recipientsText}
-            onChange={(event) =>
-              setTestState((current) => ({
-                ...current,
-                recipientsText: event.target.value
-              }))
-            }
-            placeholder="qa@empresa.com&#10;gestor@empresa.com"
-          />
-        </label>
-
-        <div className="note-block compact-note">
-          <strong>Como este teste funciona</strong>
-          <p>
-            O app usa o template atual, o remetente atual e os dados do primeiro contato válido da
-            lista para montar a prévia e enviar o teste.
-          </p>
-        </div>
-
-        {testState.preview ? (
-          <div className="note-block compact-note">
-            <strong>Prévia pronta</strong>
-            <p>
-              {testState.preview.notice ||
-                'A prévia já foi renderizada com os dados do primeiro contato válido.'}
-            </p>
-          </div>
-        ) : null}
-
-        <div className="test-results">
-          {testState.results.map((result) => (
-            <div
-              key={result.email}
-              className={result.status === 'aceita' ? 'result-pill success' : 'result-pill danger'}
-            >
-              <strong>{result.email}</strong>
-              <span>{result.status === 'aceita' ? 'Aceita pelo SendGrid' : result.reason}</span>
-            </div>
-          ))}
         </div>
       </article>
     </section>

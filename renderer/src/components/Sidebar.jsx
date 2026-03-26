@@ -2,6 +2,7 @@ const ITEMS = [
   { id: 'contacts', label: 'Contatos' },
   { id: 'template', label: 'Template' },
   { id: 'config', label: 'Configuração' },
+  { id: 'send', label: 'Disparo' },
   { id: 'dashboard', label: 'Dashboard' },
   { id: 'report', label: 'Relatório' }
 ];

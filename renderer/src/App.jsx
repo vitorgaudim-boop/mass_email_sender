@@ -4,6 +4,7 @@ import { Sidebar } from './components/Sidebar.jsx';
 import { ContactsTable } from './components/ContactsTable.jsx';
 import { TemplateStudio } from './components/TemplateStudio.jsx';
 import { ConfigScreen } from './components/ConfigScreen.jsx';
+import { SendScreen } from './components/SendScreen.jsx';
 import { DashboardScreen } from './components/DashboardScreen.jsx';
 import { ReportScreen } from './components/ReportScreen.jsx';
 
@@ -32,10 +33,25 @@ function buildAvailableFields(contacts) {
   return Array.from(fieldSet).sort((left, right) => left.localeCompare(right));
 }
 
+function countEligibleContacts(contacts, selectedGroupIds = []) {
+  return contacts.filter((contact) => {
+    if (!contact.isValid || contact.excluded) {
+      return false;
+    }
+
+    if (!selectedGroupIds.length) {
+      return true;
+    }
+
+    return (contact.groups || []).some((group) => selectedGroupIds.includes(group.id));
+  }).length;
+}
+
 export function App() {
   const desktopApi = typeof window !== 'undefined' ? window.envioApi : undefined;
   const [activeScreen, setActiveScreen] = useState('contacts');
   const [contacts, setContacts] = useState([]);
+  const [contactGroups, setContactGroups] = useState([]);
   const [templateDraft, setTemplateDraft] = useState(DEFAULT_TEMPLATE_DRAFT);
   const [configDraft, setConfigDraft] = useState(DEFAULT_SEND_CONFIG);
   const [history, setHistory] = useState([]);
@@ -62,6 +78,10 @@ export function App() {
     results: []
   });
   const availableFields = useMemo(() => buildAvailableFields(contacts), [contacts]);
+  const eligibleContactsCount = useMemo(
+    () => countEligibleContacts(contacts, configDraft.selectedGroupIds || []),
+    [contacts, configDraft.selectedGroupIds]
+  );
 
   if (!desktopApi || typeof desktopApi.getBootstrap !== 'function') {
     return (
@@ -98,6 +118,7 @@ export function App() {
 
         startTransition(() => {
           setContacts(bootstrap.contacts || []);
+          setContactGroups(bootstrap.contactGroups || []);
           setTemplateDraft(bootstrap.templateDraft || DEFAULT_TEMPLATE_DRAFT);
           setConfigDraft(bootstrap.configDraft || DEFAULT_SEND_CONFIG);
           setHistory(bootstrap.history || []);
@@ -220,8 +241,11 @@ export function App() {
         return;
       }
 
+      const nextGroups = await desktopApi.listGroups();
+
       startTransition(() => {
         setContacts(payload.contacts);
+        setContactGroups(nextGroups);
         setNotice({
           type: 'success',
           message: `${payload.summary.validRows} contato(s) validado(s), ${payload.summary.invalidRows} inválido(s).`
@@ -262,8 +286,10 @@ export function App() {
   async function handleContactMutation(action, successMessage) {
     try {
       const nextContacts = await action();
+      const nextGroups = await desktopApi.listGroups();
       startTransition(() => {
         setContacts(nextContacts);
+        setContactGroups(nextGroups);
       });
       setNotice({ type: 'success', message: successMessage });
     } catch (error) {
@@ -359,6 +385,76 @@ export function App() {
     }
   }
 
+  function toggleSendGroup(groupId) {
+    setConfigDraft((current) => {
+      const currentIds = current.selectedGroupIds || [];
+      const selectedGroupIds = currentIds.includes(groupId)
+        ? currentIds.filter((id) => id !== groupId)
+        : [...currentIds, groupId];
+
+      return {
+        ...current,
+        selectedGroupIds
+      };
+    });
+  }
+
+  async function handleCreateGroup(name) {
+    try {
+      const groups = await desktopApi.createGroup({ name, description: '' });
+      startTransition(() => {
+        setContactGroups(groups);
+      });
+      setNotice({ type: 'success', message: `Grupo "${name}" criado com sucesso.` });
+    } catch (error) {
+      setNotice({ type: 'error', message: error.message });
+    }
+  }
+
+  async function handleDeleteGroup(groupId) {
+    try {
+      const groups = await desktopApi.deleteGroup(groupId);
+      const nextContacts = await desktopApi.listContacts();
+      startTransition(() => {
+        setContactGroups(groups);
+        setContacts(nextContacts);
+        setConfigDraft((current) => ({
+          ...current,
+          selectedGroupIds: (current.selectedGroupIds || []).filter((id) => id !== groupId)
+        }));
+      });
+      setNotice({ type: 'success', message: 'Grupo removido com sucesso.' });
+    } catch (error) {
+      setNotice({ type: 'error', message: error.message });
+    }
+  }
+
+  async function handleAddSelectedToGroup(groupId, selectedContacts) {
+    try {
+      const payload = await desktopApi.addGroupMembers(groupId, selectedContacts);
+      startTransition(() => {
+        setContactGroups(payload.groups);
+        setContacts(payload.contacts);
+      });
+      setNotice({ type: 'success', message: 'Contatos adicionados ao grupo.' });
+    } catch (error) {
+      setNotice({ type: 'error', message: error.message });
+    }
+  }
+
+  async function handleRemoveSelectedFromGroup(groupId, selectedContacts) {
+    try {
+      const payload = await desktopApi.removeGroupMembers(groupId, selectedContacts);
+      startTransition(() => {
+        setContactGroups(payload.groups);
+        setContacts(payload.contacts);
+      });
+      setNotice({ type: 'success', message: 'Contatos removidos do grupo.' });
+    } catch (error) {
+      setNotice({ type: 'error', message: error.message });
+    }
+  }
+
   return (
     <div className="app-shell">
       <Sidebar
@@ -373,7 +469,7 @@ export function App() {
             <p className="eyebrow">Rakuten Email Operations</p>
             <h1>Envio de Email</h1>
             <p className="workspace-copy">
-              Base, template, teste e disparo. Sem HTML obrigatório e sem tela desperdiçada.
+              Base, template, configuração, disparo, dashboard e relatório no mesmo fluxo.
             </p>
           </div>
           <div className="workspace-actions">
@@ -400,6 +496,9 @@ export function App() {
           {activeScreen === 'contacts' ? (
             <ContactsTable
               contacts={contacts}
+              contactGroups={contactGroups}
+              selectedGroupIds={configDraft.selectedGroupIds || []}
+              onToggleGroupSelection={toggleSendGroup}
               onImportContacts={handleImportContacts}
               onClearContacts={() =>
                 handleContactMutation(() => desktopApi.clearContacts(), 'Contatos temporários removidos.')
@@ -413,6 +512,10 @@ export function App() {
                   excluded ? 'Linhas excluídas do envio.' : 'Linhas reativadas para envio.'
                 )
               }
+              onCreateGroup={handleCreateGroup}
+              onDeleteGroup={handleDeleteGroup}
+              onAddSelectedToGroup={handleAddSelectedToGroup}
+              onRemoveSelectedFromGroup={handleRemoveSelectedFromGroup}
             />
           ) : null}
 
@@ -430,18 +533,21 @@ export function App() {
           ) : null}
 
           {activeScreen === 'config' ? (
-            <ConfigScreen
+            <ConfigScreen configDraft={configDraft} onChangeConfig={setConfigDraft} />
+          ) : null}
+
+          {activeScreen === 'send' ? (
+            <SendScreen
               configDraft={configDraft}
-              onChangeConfig={setConfigDraft}
-              campaignIsActive={Boolean(
-                campaignProgress && !FINAL_STATUSES.has(campaignProgress.status)
-              )}
-              onSendTest={handleSendTest}
-              onStartCampaign={handleStartCampaign}
+              contactGroups={contactGroups}
+              totalEligibleContacts={eligibleContactsCount}
+              preview={testState.preview}
               testState={testState}
               setTestState={setTestState}
               sendingTest={busyState.sendingTest}
               startingCampaign={busyState.startingCampaign}
+              onSendTest={handleSendTest}
+              onStartCampaign={handleStartCampaign}
             />
           ) : null}
 

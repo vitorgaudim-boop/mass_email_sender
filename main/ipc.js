@@ -11,6 +11,7 @@ import { exportCampaignResultsCsv } from './services/reportService.js';
 function buildBootstrap(database) {
   return {
     contacts: database.listTempContacts(),
+    contactGroups: database.listContactGroups(),
     templateDraft: syncTemplateDraft({
       ...DEFAULT_TEMPLATE_DRAFT,
       ...(database.getTemplateDraft() || {})
@@ -21,6 +22,24 @@ function buildBootstrap(database) {
     },
     history: database.listCampaignHistory()
   };
+}
+
+function appendPreviewUnsubscribe(html, config) {
+  if (!config.enableSubscriptionTracking || !config.subscriptionTrackingHtml) {
+    return html;
+  }
+
+  const unsubscribeHtml = `
+    <div data-preview-unsubscribe="true">
+      ${config.subscriptionTrackingHtml}
+    </div>
+  `;
+
+  if (html.includes('</body>')) {
+    return html.replace('</body>', `${unsubscribeHtml}</body>`);
+  }
+
+  return `${html}${unsubscribeHtml}`;
 }
 
 function toUiPreview(template, config, sampleContact) {
@@ -44,8 +63,13 @@ function toUiPreview(template, config, sampleContact) {
   return {
     type: 'local_template',
     ...rendered,
+    html: appendPreviewUnsubscribe(rendered.html, config),
     notice: ''
   };
+}
+
+function getEligibleContactsForConfig(database, config) {
+  return database.getEligibleContacts(config.selectedGroupIds || []);
 }
 
 export function registerIpcHandlers({ database, queueManager }) {
@@ -88,6 +112,24 @@ export function registerIpcHandlers({ database, queueManager }) {
     return [];
   });
 
+  ipcMain.handle('groups:list', async () => database.listContactGroups());
+
+  ipcMain.handle('groups:create', async (_event, payload) =>
+    database.createContactGroup(payload)
+  );
+
+  ipcMain.handle('groups:delete', async (_event, groupId) =>
+    database.deleteContactGroup(groupId)
+  );
+
+  ipcMain.handle('groups:add-members', async (_event, groupId, contacts) =>
+    database.addContactsToGroup(groupId, contacts)
+  );
+
+  ipcMain.handle('groups:remove-members', async (_event, groupId, contacts) =>
+    database.removeContactsFromGroup(groupId, contacts)
+  );
+
   ipcMain.handle('template:import', async () => {
     const selection = await dialog.showOpenDialog({
       properties: ['openFile'],
@@ -118,7 +160,8 @@ export function registerIpcHandlers({ database, queueManager }) {
   });
 
   ipcMain.handle('template:preview', async (_event, { template, config }) => {
-    const sampleContact = database.getEligibleContacts()[0] || {
+    const eligibleContacts = getEligibleContactsForConfig(database, config);
+    const sampleContact = eligibleContacts[0] || {
       email: config.senderEmail || 'preview@example.com',
       name: 'Contato Exemplo',
       variables: {}
@@ -146,7 +189,8 @@ export function registerIpcHandlers({ database, queueManager }) {
       throw new Error(`Emails de teste invalidos: ${errors.join(', ')}`);
     }
 
-    const sampleContact = database.getEligibleContacts()[0] || {
+    const eligibleContacts = getEligibleContactsForConfig(database, config);
+    const sampleContact = eligibleContacts[0] || {
       email: config.senderEmail,
       name: 'Contato Teste',
       variables: {}
@@ -167,7 +211,7 @@ export function registerIpcHandlers({ database, queueManager }) {
   });
 
   ipcMain.handle('campaign:start', async (_event, { config, template }) => {
-    const contacts = database.getEligibleContacts();
+    const contacts = getEligibleContactsForConfig(database, config);
     if (queueManager.getCurrentCampaign()) {
       throw new Error('Ja existe uma campanha em andamento.');
     }
