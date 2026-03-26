@@ -4,7 +4,7 @@ const VARIABLE_PATTERN = /{{\s*[A-Za-z0-9_.-]+\s*}}/g;
 function escapeHtmlPreservingVariables(value) {
   const tokens = [];
   const source = String(value ?? '').replace(VARIABLE_PATTERN, (match) => {
-    const token = `__VARIABLE_TOKEN_${tokens.length}__`;
+    const token = `__VAR_TOKEN_${tokens.length}__`;
     tokens.push({ token, match });
     return token;
   });
@@ -23,83 +23,56 @@ function escapeHtmlPreservingVariables(value) {
   return escaped;
 }
 
-function normalizeLineBreaks(value) {
-  return String(value ?? '').replace(/\r\n/g, '\n').trim();
-}
-
-function renderParagraphs(value, { className = '', color = '#2b2034' } = {}) {
-  const paragraphs = normalizeLineBreaks(value)
-    .split(/\n\s*\n/g)
-    .map((entry) => entry.trim())
-    .filter(Boolean);
-
-  if (!paragraphs.length) {
-    return '';
+function normalizeRichBody(html) {
+  const trimmed = String(html ?? '').trim();
+  if (!trimmed) {
+    return '<p style="margin:0 0 16px; font-size:15px; line-height:1.72; color:#2b2034;">Escreva aqui o conteúdo do email.</p>';
   }
 
-  return paragraphs
-    .map((paragraph) => {
-      const html = escapeHtmlPreservingVariables(paragraph).replace(/\n/g, '<br />');
-      return `<p class="${className}" style="margin:0 0 16px; font-size:15px; line-height:1.72; color:${color};">${html}</p>`;
-    })
-    .join('');
+  return trimmed;
 }
 
-function renderHighlightList(value, color = '#2b2034') {
-  const items = normalizeLineBreaks(value)
-    .split('\n')
-    .map((entry) => entry.trim())
-    .filter(Boolean);
-
-  if (!items.length) {
-    return '';
-  }
-
-  return `
-    <ul style="margin:0 0 20px 18px; padding:0; color:${color};">
-      ${items
-        .map(
-          (item) =>
-            `<li style="margin:0 0 8px; font-size:15px; line-height:1.6;">${escapeHtmlPreservingVariables(item)}</li>`
-        )
-        .join('')}
-    </ul>
-  `;
-}
-
-function renderSignature(value) {
-  return escapeHtmlPreservingVariables(value || 'Equipe {{brand_name}}').replace(/\n/g, '<br />');
+function normalizeSignature(signature) {
+  return escapeHtmlPreservingVariables(signature || 'Equipe {{brand_name}}').replace(/\n/g, '<br />');
 }
 
 function buildShellHtml(shell, composer) {
-  const greetingHtml = renderParagraphs(composer.greeting, {
-    className: 'greeting',
-    color: shell.textColor
-  });
-  const bodyHtml = renderParagraphs(composer.body, {
-    className: 'body-copy',
-    color: shell.textColor
-  });
-  const supportingHtml = renderParagraphs(composer.supportingText, {
-    className: 'support-copy',
-    color: shell.mutedTextColor
-  });
-  const highlightsHtml = renderHighlightList(composer.highlights, shell.textColor);
-  const ctaEnabled = composer.ctaLabel && composer.ctaUrl;
-  const ctaHtml = ctaEnabled
+  const eyebrowHtml = shell.eyebrow
     ? `
-      <section style="margin:8px 0 28px; padding:22px 24px; border-radius:22px; background:${shell.ctaBackground};">
-        <a
-          href="${escapeHtmlPreservingVariables(composer.ctaUrl)}"
-          target="_blank"
-          rel="noopener noreferrer"
-          style="display:inline-block; padding:14px 22px; border-radius:999px; background:${shell.ctaButtonBackground}; color:${shell.ctaButtonColor}; font-weight:700; text-decoration:none;"
-        >
-          ${escapeHtmlPreservingVariables(composer.ctaLabel)}
-        </a>
-      </section>
+      <p style="margin:0 0 12px; font-size:12px; line-height:1.4; letter-spacing:0.18em; text-transform:uppercase; color:${shell.eyebrowColor};">
+        ${shell.eyebrow}
+      </p>
     `
     : '';
+
+  const logoHtml = `
+    <img
+      src="{{brand_logo_url}}"
+      alt="{{brand_name}}"
+      width="${shell.logoWidth}"
+      style="display:block; width:100%; max-width:${shell.logoWidth}px; height:auto; border:0; margin:${shell.logoMargin};"
+    />
+  `;
+
+  const introHtml = composer.intro
+    ? `<p style="margin:18px 0 0; font-size:15px; line-height:1.7; color:${shell.introColor};">${escapeHtmlPreservingVariables(composer.intro)}</p>`
+    : '';
+
+  const ctaHtml =
+    composer.ctaLabel && composer.ctaUrl
+      ? `
+        <div style="margin:12px 0 30px; padding:20px 22px; border-radius:20px; background:${shell.ctaPanelBackground};">
+          <a
+            href="${escapeHtmlPreservingVariables(composer.ctaUrl)}"
+            target="_blank"
+            rel="noopener noreferrer"
+            style="display:inline-block; padding:14px 22px; border-radius:999px; background:${shell.ctaButtonBackground}; color:${shell.ctaButtonColor}; font-weight:700; text-decoration:none;"
+          >
+            ${escapeHtmlPreservingVariables(composer.ctaLabel)}
+          </a>
+        </div>
+      `
+      : '';
 
   return `<!doctype html>
 <html lang="pt-BR">
@@ -108,47 +81,38 @@ function buildShellHtml(shell, composer) {
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>${escapeHtmlPreservingVariables(composer.headline || 'Novo email')}</title>
   </head>
-  <body style="margin:0; padding:0; background:${shell.pageBackground}; font-family:Arial, Helvetica, sans-serif; color:${shell.textColor};">
+  <body style="margin:0; padding:0; background:${shell.pageBackground}; font-family:Arial, Helvetica, sans-serif; color:${shell.bodyColor};">
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:${shell.pageBackground};">
       <tr>
-        <td align="center" style="padding:24px 14px;">
-          <table role="presentation" width="640" cellpadding="0" cellspacing="0" border="0" style="width:100%; max-width:640px; background:#ffffff; border-radius:26px; overflow:hidden; border:1px solid ${shell.frameLine};">
+        <td align="center" style="padding:32px 16px;">
+          <table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0" style="width:100%; max-width:600px; background:#ffffff; border-radius:20px; overflow:hidden; border:${shell.frameBorder}; box-shadow:${shell.frameShadow};">
             <tr>
-              <td style="padding:0; background:${shell.headerBackground};">
-                <div style="padding:28px 34px 24px;">
-                  <div style="display:inline-flex; align-items:center; padding:8px 12px; border-radius:999px; background:${shell.labelBackground}; color:${shell.labelColor}; font-size:11px; letter-spacing:0.16em; text-transform:uppercase; font-weight:700;">
-                    ${shell.label}
-                  </div>
-                  <img
-                    src="{{brand_logo_url}}"
-                    alt="{{brand_name}}"
-                    width="220"
-                    style="display:block; width:100%; max-width:220px; height:auto; border:0; margin:18px 0 0;"
-                  />
-                  <h1 style="margin:20px 0 0; font-size:30px; line-height:1.15; color:${shell.titleColor};">
+              <td style="padding:0;">
+                <div style="background:${shell.headerBackground}; padding:${shell.headerPadding}; text-align:${shell.headerAlign};">
+                  ${eyebrowHtml}
+                  ${logoHtml}
+                  <h1 style="margin:0; font-size:${shell.headlineSize}; line-height:1.18; color:${shell.headlineColor};">
                     ${escapeHtmlPreservingVariables(composer.headline || 'Seu título aqui')}
                   </h1>
+                  ${introHtml}
                 </div>
               </td>
             </tr>
             <tr>
-              <td style="padding:30px 34px 18px;">
-                ${greetingHtml}
-                ${bodyHtml}
-                ${supportingHtml}
-                ${highlightsHtml}
+              <td style="padding:32px 36px 18px;">
+                ${normalizeRichBody(composer.bodyHtml)}
                 ${ctaHtml}
-                <div style="margin-top:10px; padding-top:18px; border-top:1px solid ${shell.frameLine};">
-                  <p style="margin:0; font-size:15px; line-height:1.7; color:${shell.textColor};">
+                <div style="margin-top:6px; padding-top:18px; border-top:1px solid ${shell.dividerColor};">
+                  <p style="margin:0; font-size:15px; line-height:1.72; color:${shell.bodyColor};">
                     Atenciosamente,<br />
-                    <strong>${renderSignature(composer.signature)}</strong>
+                    <strong>${normalizeSignature(composer.signature)}</strong>
                   </p>
                 </div>
               </td>
             </tr>
             <tr>
-              <td style="padding:16px 34px 22px; background:${shell.footerBackground}; color:${shell.footerColor};">
-                <p style="margin:0; font-size:12px; line-height:1.6;">
+              <td style="padding:16px 36px 22px; background:${shell.footerBackground}; color:${shell.footerColor};">
+                <p style="margin:0; font-size:12px; line-height:1.62;">
                   ${shell.footerNote}
                 </p>
               </td>
@@ -164,11 +128,9 @@ function buildShellHtml(shell, composer) {
 function createDefaultComposer(template) {
   return {
     headline: template.defaultHeadline || 'Seu título aqui',
-    greeting: 'Olá {{name}},',
-    body: 'Escreva aqui a mensagem principal do email.',
-    supportingText:
-      'Use este segundo bloco para complementar o contexto, incluir observações ou reforçar instruções.',
-    highlights: '',
+    intro: template.defaultIntro || '',
+    bodyHtml:
+      '<p style="margin:0 0 16px; font-size:15px; line-height:1.72; color:#2b2034;">Olá {{name}},</p><p style="margin:0 0 16px; font-size:15px; line-height:1.72; color:#2b2034;">Escreva aqui a mensagem principal do email. Você pode usar negrito, listas, links e variáveis da planilha.</p>',
     ctaLabel: '',
     ctaUrl: DEFAULT_CTA_URL,
     signature: 'Equipe {{brand_name}}'
@@ -177,125 +139,152 @@ function createDefaultComposer(template) {
 
 export const BUILT_IN_TEMPLATES = [
   {
-    id: 'rakuten_header_clean',
-    name: 'Header limpo',
-    category: 'Clássico',
-    description: 'Topo limpo com logo em destaque e corpo neutro.',
-    tags: ['simples', 'institucional'],
+    id: 'banner_editorial',
+    name: 'Banner editorial',
+    category: 'Institucional',
+    description: 'Base mais próxima do template.html, com topo largo e leitura clássica.',
     isDefault: true,
-    label: 'Comunicado',
-    defaultHeadline: 'Seu comunicado começa aqui',
-    pageBackground: '#f5f0fb',
-    headerBackground: 'linear-gradient(180deg,#f5ecff 0%, #ffffff 100%)',
-    labelBackground: 'rgba(133, 41, 205, 0.12)',
-    labelColor: '#772bb8',
-    titleColor: '#251a31',
-    textColor: '#2b2034',
-    mutedTextColor: '#6f617b',
-    frameLine: '#eadcf8',
-    ctaBackground: 'linear-gradient(135deg,#f0e0ff,#f7efff)',
-    ctaButtonBackground: '#7c28c3',
+    eyebrow: '*english follows portuguese*',
+    eyebrowColor: '#7a6d77',
+    pageBackground: '#f4f1f7',
+    headerBackground: 'linear-gradient(180deg,#f8f3fb 0%, #ffffff 100%)',
+    headerPadding: '26px 36px 18px',
+    headerAlign: 'center',
+    logoWidth: 250,
+    logoMargin: '0 auto 18px',
+    headlineSize: '28px',
+    headlineColor: '#1a1a1a',
+    introColor: '#64596c',
+    bodyColor: '#222222',
+    ctaPanelBackground: '#f4eef7',
+    ctaButtonBackground: '#7d28c2',
     ctaButtonColor: '#ffffff',
-    footerBackground: '#faf5ff',
-    footerColor: '#6c5d79',
+    dividerColor: '#e8dfea',
+    footerBackground: '#f7f3f8',
+    footerColor: '#6d6174',
+    frameBorder: '1px solid #ebe5ef',
+    frameShadow: '0 18px 44px rgba(71, 31, 98, 0.08)',
     footerNote:
-      'Envio realizado por {{brand_name}}. O link de unsubscribe aparecerá automaticamente no rodapé do email quando habilitado na configuração.'
+      'Envio realizado por {{brand_name}}. Quando o unsubscribe estiver ligado na configuração, o link aparecerá automaticamente no rodapé do email.',
+    defaultHeadline: 'Atualização importante para sua operação',
+    defaultIntro: ''
   },
   {
-    id: 'rakuten_header_band',
-    name: 'Faixa roxa',
-    category: 'Impacto',
-    description: 'Faixa superior mais marcante, boa para campanhas e avisos fortes.',
-    tags: ['destaque', 'cta'],
-    label: 'Campanha',
-    defaultHeadline: 'Destaque sua mensagem principal',
-    pageBackground: '#f4effb',
-    headerBackground: 'linear-gradient(135deg,#7f27c6 0%, #9d46e2 100%)',
-    labelBackground: 'rgba(255,255,255,0.16)',
-    labelColor: '#ffffff',
-    titleColor: '#ffffff',
-    textColor: '#2b2034',
-    mutedTextColor: '#665875',
-    frameLine: '#e6daf6',
-    ctaBackground: 'linear-gradient(135deg,#7f27c6,#9d46e2)',
-    ctaButtonBackground: '#ffffff',
-    ctaButtonColor: '#7022b2',
+    id: 'hero_soft',
+    name: 'Hero suave',
+    category: 'Relacionamento',
+    description: 'Topo com mais presença visual e card branco limpo para campanhas e anúncios.',
+    eyebrow: 'Comunicado',
+    eyebrowColor: 'rgba(255,255,255,0.8)',
+    pageBackground: '#f3edf8',
+    headerBackground: 'linear-gradient(135deg,#8b33d0 0%, #6d21b0 100%)',
+    headerPadding: '32px 36px 28px',
+    headerAlign: 'left',
+    logoWidth: 230,
+    logoMargin: '0 0 20px',
+    headlineSize: '30px',
+    headlineColor: '#ffffff',
+    introColor: 'rgba(255,255,255,0.88)',
+    bodyColor: '#251b33',
+    ctaPanelBackground: 'linear-gradient(135deg,#efe1ff,#f7efff)',
+    ctaButtonBackground: '#6f22b4',
+    ctaButtonColor: '#ffffff',
+    dividerColor: '#e7dbf5',
     footerBackground: '#f8f2ff',
-    footerColor: '#6c5d79',
-    footerNote:
-      'Use este shell quando você quiser um topo mais forte sem escrever HTML. O unsubscribe continua sendo controlado pela configuração do SendGrid.'
+    footerColor: '#675978',
+    frameBorder: '1px solid #e7dbf5',
+    frameShadow: '0 20px 44px rgba(63, 17, 97, 0.10)',
+    footerNote: 'Ideal para emails promocionais, lançamentos e convites para ação.',
+    defaultHeadline: 'Destaque sua mensagem principal',
+    defaultIntro: 'Use este shell quando você quiser um topo mais marcante, sem perder legibilidade.'
   },
   {
-    id: 'rakuten_notice_frame',
-    name: 'Quadro informativo',
-    category: 'Aviso',
-    description: 'Visual mais sóbrio para instruções, prazos e comunicação operacional.',
-    tags: ['aviso', 'prazo'],
-    label: 'Aviso',
+    id: 'notice_clean',
+    name: 'Aviso clean',
+    category: 'Operação',
+    description: 'Mais sóbrio, excelente para cobranças, prazos e instruções.',
+    eyebrow: 'Aviso',
+    eyebrowColor: '#7c28c3',
+    pageBackground: '#f5f1f9',
+    headerBackground: '#ffffff',
+    headerPadding: '26px 36px 18px',
+    headerAlign: 'left',
+    logoWidth: 200,
+    logoMargin: '0 0 18px',
+    headlineSize: '28px',
+    headlineColor: '#231630',
+    introColor: '#62566d',
+    bodyColor: '#2b2034',
+    ctaPanelBackground: '#f1e8fb',
+    ctaButtonBackground: '#7726ba',
+    ctaButtonColor: '#ffffff',
+    dividerColor: '#e8dff1',
+    footerBackground: '#faf7fc',
+    footerColor: '#6c6075',
+    frameBorder: '1px solid #ece4f2',
+    frameShadow: '0 14px 36px rgba(66, 23, 92, 0.06)',
+    footerNote: 'Use esta base para comunicação operacional, financeira ou de compliance.',
     defaultHeadline: 'Explique a atualização com clareza',
-    pageBackground: '#f7f3fb',
-    headerBackground: '#ffffff',
-    labelBackground: '#f0e3ff',
-    labelColor: '#6d25ae',
-    titleColor: '#221632',
-    textColor: '#2d2340',
-    mutedTextColor: '#64586f',
-    frameLine: '#d9c7f3',
-    ctaBackground: '#f3e7ff',
-    ctaButtonBackground: '#7427b6',
-    ctaButtonColor: '#ffffff',
-    footerBackground: '#f7f1ff',
-    footerColor: '#695a79',
-    footerNote:
-      'Este modelo funciona bem para mudanças de processo, cobrança gentil, documentos pendentes e comunicados internos.'
+    defaultIntro: 'Estrutura enxuta e profissional para informações importantes.'
   },
   {
-    id: 'rakuten_minimal_compact',
-    name: 'Compacto',
-    category: 'Desktop',
-    description: 'Mais enxuto, com menos blocos visuais e leitura direta.',
-    tags: ['compacto', 'rápido'],
-    label: 'Atualização',
-    defaultHeadline: 'Seu email direto ao ponto',
-    pageBackground: '#f7f4fb',
-    headerBackground: '#ffffff',
-    labelBackground: '#f3eff8',
-    labelColor: '#7c28c3',
-    titleColor: '#221632',
-    textColor: '#2a1f34',
-    mutedTextColor: '#63576f',
-    frameLine: '#ece1f8',
-    ctaBackground: '#f5effc',
-    ctaButtonBackground: '#7c28c3',
-    ctaButtonColor: '#ffffff',
-    footerBackground: '#ffffff',
-    footerColor: '#766783',
-    footerNote:
-      'Ideal para mensagens curtas. Se você não precisar de CTA, deixe os campos do botão em branco e o bloco não será exibido.'
-  },
-  {
-    id: 'rakuten_footer_cta',
-    name: 'CTA no rodapé',
+    id: 'band_top',
+    name: 'Faixa superior',
     category: 'Promoção',
-    description: 'Shell pensado para calls-to-action com fechamento mais forte.',
-    tags: ['promo', 'cta'],
-    label: 'Ação',
-    defaultHeadline: 'Convide o destinatário a agir',
-    pageBackground: '#f5effb',
-    headerBackground: 'linear-gradient(180deg,#ffffff 0%, #f6ecff 100%)',
-    labelBackground: '#f2e2ff',
-    labelColor: '#7022b2',
-    titleColor: '#221632',
-    textColor: '#2d2340',
-    mutedTextColor: '#665875',
-    frameLine: '#e4d5f5',
-    ctaBackground: 'linear-gradient(135deg,#7c28c3,#9d46e2)',
+    description: 'Topo forte com faixa de cor e CTA bem visível.',
+    eyebrow: 'Campanha',
+    eyebrowColor: '#ffffff',
+    pageBackground: '#f4eef9',
+    headerBackground: 'linear-gradient(180deg,#5d1697 0%, #8d35d3 100%)',
+    headerPadding: '18px 36px 26px',
+    headerAlign: 'center',
+    logoWidth: 220,
+    logoMargin: '8px auto 20px',
+    headlineSize: '30px',
+    headlineColor: '#ffffff',
+    introColor: 'rgba(255,255,255,0.9)',
+    bodyColor: '#281d34',
+    ctaPanelBackground: 'linear-gradient(135deg,#7c28c3,#9a4ad9)',
     ctaButtonBackground: '#ffffff',
-    ctaButtonColor: '#7022b2',
-    footerBackground: '#f2e4ff',
-    footerColor: '#5f5170',
+    ctaButtonColor: '#6720a8',
+    dividerColor: '#e6ddf2',
+    footerBackground: '#f6effd',
+    footerColor: '#655976',
+    frameBorder: '1px solid #e5d8f4',
+    frameShadow: '0 18px 42px rgba(76, 24, 116, 0.10)',
+    footerNote: 'Bom para emails de campanha, benefício, cupom ou comunicação de lançamento.',
+    defaultHeadline: 'Convide o destinatário a agir',
+    defaultIntro: 'Ideal para quando o botão é parte importante do resultado.'
+  },
+  {
+    id: 'minimal_frame',
+    name: 'Minimalista',
+    category: 'Executivo',
+    description: 'Sem excesso visual, com foco total no texto e na leitura.',
+    eyebrow: 'Atualização',
+    eyebrowColor: '#8a43c8',
+    pageBackground: '#f5f2f8',
+    headerBackground: '#ffffff',
+    headerPadding: '24px 36px 12px',
+    headerAlign: 'left',
+    logoWidth: 180,
+    logoMargin: '0 0 16px',
+    headlineSize: '26px',
+    headlineColor: '#231830',
+    introColor: '#685c73',
+    bodyColor: '#261c32',
+    ctaPanelBackground: '#f4ecfb',
+    ctaButtonBackground: '#7b27c0',
+    ctaButtonColor: '#ffffff',
+    dividerColor: '#ece5f2',
+    footerBackground: '#ffffff',
+    footerColor: '#73687c',
+    frameBorder: '1px solid #eee8f3',
+    frameShadow: '0 14px 32px rgba(65, 24, 92, 0.05)',
     footerNote:
-      'Use este shell quando a chamada para ação for a parte principal da mensagem.'
+      'Base mais discreta para emails que precisam parecer diretos, sérios e corporativos.',
+    defaultHeadline: 'Seu email direto ao ponto',
+    defaultIntro: ''
   }
 ];
 

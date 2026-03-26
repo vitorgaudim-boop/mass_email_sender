@@ -413,11 +413,13 @@ export function App() {
           {activeScreen === 'template' ? (
             <TemplateStudio
               templateDraft={templateDraft}
+              configDraft={configDraft}
               availableFields={availableFields}
               onChangeTemplate={setTemplateDraft}
               onPreview={handlePreviewTemplate}
               preview={testState.preview}
               onImportTemplate={handleImportTemplate}
+              onOpenConfig={() => setActiveScreen('config')}
             />
           ) : null}
 

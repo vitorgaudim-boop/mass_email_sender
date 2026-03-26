@@ -10,13 +10,12 @@ export function Sidebar({ activeScreen, onSelectScreen, totalContacts, historyCo
   return (
     <aside className="sidebar">
       <div className="sidebar-brand compact-brand">
-        <p className="sidebar-tag">Rakuten Advertising</p>
         <div className="brand-wordmark compact-wordmark">
           <span className="brand-rakuten">Rakuten</span>
           <span className="brand-advertising">Advertising</span>
         </div>
         <h2>Envio de Email</h2>
-        <p>Desktop app para operar campanhas em lote com SendGrid.</p>
+        <p>Operação de campanhas em lote com SendGrid, em um fluxo único e direto.</p>
       </div>
 
       <nav className="sidebar-nav">

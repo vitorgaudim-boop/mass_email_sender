@@ -31,10 +31,10 @@ export function ConfigScreen({
         <div className="panel-header">
           <div>
             <p className="eyebrow">3. Configuração</p>
-            <h3>Preencha o essencial e deixe o resto recolhido</h3>
+            <h3>Remetente, marca e regras de envio</h3>
             <p className="section-copy">
-              Esta tela foi organizada para ficar mais direta. Primeiro marque a identidade da
-              campanha, depois o remetente e, por fim, o jeito de enviar.
+              Primeiro defina a identidade do email. Depois revise o remetente, o assunto e a forma
+              de disparo.
             </p>
           </div>
           <button
@@ -50,11 +50,12 @@ export function ConfigScreen({
           <section className="config-section">
             <div className="config-section-header">
               <strong>Marca e identidade</strong>
-              <span>Usado no preview e nos templates prontos.</span>
+              <span>Isso aparece no topo e no rodapé dos templates prontos.</span>
             </div>
+
             <div className="form-grid two-columns">
               <label>
-                <span>Nome da marca</span>
+                <span>Nome exibido da marca</span>
                 <input
                   className="input-field"
                   value={configDraft.brandName}
@@ -62,8 +63,9 @@ export function ConfigScreen({
                   placeholder="Rakuten Advertising"
                 />
               </label>
+
               <label>
-                <span>URL da logo</span>
+                <span>URL da logo exibida</span>
                 <input
                   className="input-field"
                   value={configDraft.brandLogoUrl}
@@ -72,12 +74,13 @@ export function ConfigScreen({
                 />
               </label>
             </div>
+
             <div className="note-block compact-note">
-              <strong>Importante</strong>
+              <strong>Onde isso entra</strong>
               <p>
-                O campo <code>{'{{brand_logo_url}}'}</code> entra automaticamente nos templates
-                prontos. Para melhor compatibilidade em clientes de email, prefira PNG ou JPG se
-                você tiver essa opção.
+                O nome da marca entra automaticamente no topo e na assinatura. A logo entra no
+                cabeçalho do email. Para melhor compatibilidade nos clientes de email, prefira PNG
+                ou JPG se você tiver essa opção.
               </p>
             </div>
           </section>
@@ -85,8 +88,9 @@ export function ConfigScreen({
           <section className="config-section">
             <div className="config-section-header">
               <strong>Remetente</strong>
-              <span>É isso que o destinatário vai ver no email.</span>
+              <span>É isso que o destinatário vai ver no envio.</span>
             </div>
+
             <div className="form-grid two-columns">
               <label>
                 <span>Email do remetente</span>
@@ -97,6 +101,7 @@ export function ConfigScreen({
                   placeholder="marketing@empresa.com"
                 />
               </label>
+
               <label>
                 <span>Nome do remetente</span>
                 <input
@@ -106,6 +111,7 @@ export function ConfigScreen({
                   placeholder="Equipe Marketing"
                 />
               </label>
+
               <label>
                 <span>Reply-to</span>
                 <input
@@ -115,6 +121,7 @@ export function ConfigScreen({
                   placeholder="suporte@empresa.com"
                 />
               </label>
+
               <label>
                 <span>Nome do reply-to</span>
                 <input
@@ -124,6 +131,7 @@ export function ConfigScreen({
                   placeholder="Equipe de Relacionamento"
                 />
               </label>
+
               <label className="full-span">
                 <span>Assunto da campanha</span>
                 <input
@@ -139,8 +147,9 @@ export function ConfigScreen({
           <section className="config-section">
             <div className="config-section-header">
               <strong>Entrega</strong>
-              <span>Defina lote, intervalo e modo de envio.</span>
+              <span>Defina lote, intervalo e o modelo de envio.</span>
             </div>
+
             <div className="form-grid two-columns">
               <label>
                 <span>Tamanho do lote</span>
@@ -153,6 +162,7 @@ export function ConfigScreen({
                   onChange={(event) => updateField('batchSize', Number(event.target.value))}
                 />
               </label>
+
               <label>
                 <span>Intervalo entre lotes (ms)</span>
                 <input
@@ -164,6 +174,7 @@ export function ConfigScreen({
                   onChange={(event) => updateField('delayMs', Number(event.target.value))}
                 />
               </label>
+
               <label>
                 <span>Modo de envio</span>
                 <select
@@ -175,6 +186,7 @@ export function ConfigScreen({
                   <option value="shared_bcc">Lote com BCC compartilhado</option>
                 </select>
               </label>
+
               <label className="toggle-row compact-toggle">
                 <input
                   type="checkbox"
@@ -203,6 +215,7 @@ export function ConfigScreen({
                     placeholder="marketing@empresa.com"
                   />
                 </label>
+
                 <label>
                   <span>Nome do destinatário visível</span>
                   <input
@@ -267,6 +280,7 @@ export function ConfigScreen({
                     placeholder="financeiro@empresa.com"
                   />
                 </label>
+
                 <label>
                   <span>BCC fixo</span>
                   <textarea
@@ -276,6 +290,7 @@ export function ConfigScreen({
                     placeholder="auditoria@empresa.com"
                   />
                 </label>
+
                 <label>
                   <span>ASM Group ID</span>
                   <input
@@ -285,6 +300,7 @@ export function ConfigScreen({
                     placeholder="Opcional. Ex.: 12345"
                   />
                 </label>
+
                 <label>
                   <span>Timeout por requisição (ms)</span>
                   <input
@@ -301,7 +317,7 @@ export function ConfigScreen({
               </div>
 
               <div className="note-block compact-note">
-                <strong>Variáveis de marca</strong>
+                <strong>Variáveis prontas da marca</strong>
                 <p>
                   Você pode usar <code>{'{{brand_logo_url}}'}</code> e{' '}
                   <code>{'{{brand_name}}'}</code> em qualquer template. Se sua conta usa
@@ -327,6 +343,7 @@ export function ConfigScreen({
                     Adicionar header
                   </button>
                 </div>
+
                 {configDraft.customHeaders.map((header, index) => (
                   <div key={`header-${index}`} className="header-row">
                     <input

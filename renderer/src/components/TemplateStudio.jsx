@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import DOMPurify from 'dompurify';
+import { RichTextEditor } from './RichTextEditor.jsx';
 import {
   BUILT_IN_TEMPLATES,
   createDraftFromPreset,
@@ -7,13 +8,48 @@ import {
   syncTemplateDraft
 } from '../../../shared/templateCatalog.js';
 
+function ShellThumb({ preset }) {
+  return (
+    <div className="template-shell-thumb" style={{ background: preset.pageBackground }}>
+      <div
+        className="template-shell-thumb-header"
+        style={{ background: preset.headerBackground }}
+      >
+        <div
+          className="template-shell-thumb-logo"
+          style={{ background: 'rgba(255,255,255,0.92)' }}
+        />
+        <div
+          className="template-shell-thumb-title"
+          style={{ background: preset.headlineColor }}
+        />
+        <div
+          className="template-shell-thumb-line short"
+          style={{ background: preset.introColor }}
+        />
+      </div>
+      <div className="template-shell-thumb-body">
+        <div className="template-shell-thumb-line" />
+        <div className="template-shell-thumb-line" />
+        <div className="template-shell-thumb-line short" />
+        <div
+          className="template-shell-thumb-cta"
+          style={{ background: preset.ctaButtonBackground }}
+        />
+      </div>
+    </div>
+  );
+}
+
 export function TemplateStudio({
   templateDraft,
+  configDraft,
   availableFields,
   onChangeTemplate,
   onPreview,
   preview,
-  onImportTemplate
+  onImportTemplate,
+  onOpenConfig
 }) {
   const [EditorComponent, setEditorComponent] = useState(null);
   const [editorLoadError, setEditorLoadError] = useState('');
@@ -22,6 +58,8 @@ export function TemplateStudio({
         USE_PROFILES: { html: true }
       })
     : '';
+  const activeBrandName = configDraft?.brandName || 'Rakuten Advertising';
+  const hasBrandLogo = Boolean(configDraft?.brandLogoUrl);
 
   useEffect(() => {
     let active = true;
@@ -41,7 +79,7 @@ export function TemplateStudio({
 
         console.error('Monaco failed to load:', error);
         setEditorLoadError(
-          'O editor avançado não carregou nesta instalação. O app trocou automaticamente para o editor simples.'
+          'O editor avançado de HTML não carregou nesta instalação. O app trocou para o editor simples.'
         );
       });
 
@@ -82,10 +120,10 @@ export function TemplateStudio({
         <div className="panel-header compact-header">
           <div>
             <p className="eyebrow">2. Template</p>
-            <h3>Escolha o visual e escreva o texto</h3>
+            <h3>Escolha o visual e escreva o conteúdo</h3>
             <p className="section-copy compact-copy">
-              Aqui o template é só a estrutura visual. O conteúdo é preenchido em campos simples,
-              sem precisar abrir HTML.
+              O template agora é a moldura visual do email. O texto principal é escrito em um
+              editor rico, sem depender de HTML.
             </p>
           </div>
           <div className="panel-actions">
@@ -93,7 +131,27 @@ export function TemplateStudio({
               Importar HTML/EML
             </button>
             <button className="primary-button" onClick={onPreview}>
-              Atualizar preview
+              Atualizar prévia
+            </button>
+          </div>
+        </div>
+
+        <div className="template-brand-bar">
+          <div className="template-brand-copy">
+            <p className="eyebrow">Marca aplicada</p>
+            <strong>{activeBrandName}</strong>
+            <p>
+              Esse nome entra no topo e na assinatura dos templates prontos. A logo configurada
+              entra automaticamente no cabeçalho do email.
+            </p>
+          </div>
+
+          <div className="template-brand-meta">
+            <span className="template-brand-state">
+              {hasBrandLogo ? 'Logo configurada' : 'Logo ainda não configurada'}
+            </span>
+            <button className="ghost-button" onClick={onOpenConfig}>
+              Abrir configuração
             </button>
           </div>
         </div>
@@ -103,7 +161,7 @@ export function TemplateStudio({
             className={templateDraft.mode === 'local' ? 'segment active' : 'segment'}
             onClick={() => updateDraft({ ...templateDraft, mode: 'local' })}
           >
-            Shells do app
+            Templates do app
           </button>
           <button
             className={templateDraft.mode === 'sendgrid_dynamic' ? 'segment active' : 'segment'}
@@ -137,7 +195,7 @@ export function TemplateStudio({
               <strong>Quando usar</strong>
               <p>
                 Use este modo só quando o HTML final já estiver hospedado no SendGrid. Se você quer
-                montar o email aqui no app, fique em <strong>Shells do app</strong>.
+                montar o email aqui no app, fique em <strong>Templates do app</strong>.
               </p>
             </div>
           </div>
@@ -154,6 +212,7 @@ export function TemplateStudio({
                   }
                   onClick={() => applyPreset(preset)}
                 >
+                  <ShellThumb preset={preset} />
                   <span className="template-category">{preset.category}</span>
                   <strong>{preset.name}</strong>
                   <small>{preset.description}</small>
@@ -162,100 +221,84 @@ export function TemplateStudio({
             </div>
 
             {isPresetMode ? (
-              <div className="simple-composer-grid">
-                <div className="note-block compact-note full-span">
-                  <strong>O assunto fica na tela Configuração</strong>
-                  <p>
-                    Aqui você escolhe só o visual e escreve o conteúdo do email. O assunto da
-                    campanha é definido depois, junto com remetente, lote e teste.
-                  </p>
+              <div className="template-compose-stack">
+                <div className="template-form-row">
+                  <label>
+                    <span>Título do email</span>
+                    <input
+                      className="input-field"
+                      value={templateDraft.composer?.headline || ''}
+                      onChange={(event) => updateComposerField('headline', event.target.value)}
+                      placeholder="Ex.: Atualização importante para a sua operação"
+                    />
+                  </label>
+
+                  <label>
+                    <span>Linha de apoio</span>
+                    <input
+                      className="input-field"
+                      value={templateDraft.composer?.intro || ''}
+                      onChange={(event) => updateComposerField('intro', event.target.value)}
+                      placeholder="Ex.: Use este espaço para resumir o contexto do email."
+                    />
+                  </label>
                 </div>
 
-                <label className="full-span">
-                  <span>Título do email</span>
-                  <input
-                    className="input-field"
-                    value={templateDraft.composer?.headline || ''}
-                    onChange={(event) => updateComposerField('headline', event.target.value)}
-                    placeholder="Ex.: Atualização importante para sua operação"
-                  />
-                </label>
+                <section className="template-editor-panel">
+                  <div className="template-editor-header">
+                    <div>
+                      <p className="eyebrow">Conteúdo principal</p>
+                      <h4>Escreva o corpo do email com formatação</h4>
+                    </div>
+                    <p>
+                      Use negrito, itálico, listas, links e variáveis da planilha sem abrir o HTML.
+                    </p>
+                  </div>
 
-                <label className="full-span">
-                  <span>Saudação</span>
-                  <input
-                    className="input-field"
-                    value={templateDraft.composer?.greeting || ''}
-                    onChange={(event) => updateComposerField('greeting', event.target.value)}
-                    placeholder="Olá {{name}},"
+                  <RichTextEditor
+                    value={templateDraft.composer?.bodyHtml || ''}
+                    onChange={(value) => updateComposerField('bodyHtml', value)}
+                    availableFields={availableFields}
                   />
-                </label>
+                </section>
 
-                <label className="full-span">
-                  <span>Mensagem principal</span>
-                  <textarea
-                    className="input-field composer-textarea composer-textarea-main"
-                    value={templateDraft.composer?.body || ''}
-                    onChange={(event) => updateComposerField('body', event.target.value)}
-                    placeholder="Escreva aqui o texto principal do email."
-                  />
-                </label>
+                <div className="template-form-row template-form-row-compact">
+                  <label>
+                    <span>Texto do botão</span>
+                    <input
+                      className="input-field"
+                      value={templateDraft.composer?.ctaLabel || ''}
+                      onChange={(event) => updateComposerField('ctaLabel', event.target.value)}
+                      placeholder="Ex.: Ver detalhes"
+                    />
+                  </label>
 
-                <label className="full-span">
-                  <span>Texto complementar</span>
-                  <textarea
-                    className="input-field composer-textarea"
-                    value={templateDraft.composer?.supportingText || ''}
-                    onChange={(event) => updateComposerField('supportingText', event.target.value)}
-                    placeholder="Use este espaço para contexto extra, instruções ou observações."
-                  />
-                </label>
+                  <label>
+                    <span>URL do botão</span>
+                    <input
+                      className="input-field"
+                      value={templateDraft.composer?.ctaUrl || ''}
+                      onChange={(event) => updateComposerField('ctaUrl', event.target.value)}
+                      placeholder="https://..."
+                    />
+                  </label>
 
-                <label className="full-span">
-                  <span>Pontos-chave</span>
-                  <textarea
-                    className="input-field composer-textarea"
-                    value={templateDraft.composer?.highlights || ''}
-                    onChange={(event) => updateComposerField('highlights', event.target.value)}
-                    placeholder={'Um item por linha\nOutro item por linha'}
-                  />
-                </label>
+                  <label>
+                    <span>Assinatura</span>
+                    <input
+                      className="input-field"
+                      value={templateDraft.composer?.signature || ''}
+                      onChange={(event) => updateComposerField('signature', event.target.value)}
+                      placeholder="Equipe {{brand_name}}"
+                    />
+                  </label>
+                </div>
 
-                <label>
-                  <span>Texto do botão</span>
-                  <input
-                    className="input-field"
-                    value={templateDraft.composer?.ctaLabel || ''}
-                    onChange={(event) => updateComposerField('ctaLabel', event.target.value)}
-                    placeholder="Ex.: Ver detalhes"
-                  />
-                </label>
-
-                <label>
-                  <span>URL do botão</span>
-                  <input
-                    className="input-field"
-                    value={templateDraft.composer?.ctaUrl || ''}
-                    onChange={(event) => updateComposerField('ctaUrl', event.target.value)}
-                    placeholder="https://..."
-                  />
-                </label>
-
-                <label className="full-span">
-                  <span>Assinatura</span>
-                  <input
-                    className="input-field"
-                    value={templateDraft.composer?.signature || ''}
-                    onChange={(event) => updateComposerField('signature', event.target.value)}
-                    placeholder="Equipe {{brand_name}}"
-                  />
-                </label>
-
-                <div className="note-block compact-note full-span">
-                  <strong>Você ainda pode personalizar</strong>
+                <div className="note-block compact-note">
+                  <strong>Fluxo recomendado</strong>
                   <p>
-                    Esses campos aceitam variáveis como <code>{'{{name}}'}</code>,{' '}
-                    <code>{'{{coupon_code}}'}</code> e <code>{'{{brand_name}}'}</code>.
+                    1. Escolha a moldura visual. 2. Escreva o conteúdo no editor rico. 3. Defina o
+                    assunto na tela de configuração. 4. Atualize a prévia e envie um teste.
                   </p>
                 </div>
               </div>
@@ -264,14 +307,14 @@ export function TemplateStudio({
                 <div className="note-block compact-note">
                   <strong>HTML importado</strong>
                   <p>
-                    Você está usando um arquivo importado. Se quiser voltar ao fluxo simples do app,
-                    clique no botão abaixo.
+                    Você está usando um arquivo externo. Se quiser voltar ao fluxo simples do app,
+                    use o botão abaixo.
                   </p>
                 </div>
 
                 <div className="panel-actions">
                   <button className="ghost-button" onClick={switchToPresetMode}>
-                    Voltar para os shells do app
+                    Voltar para os templates do app
                   </button>
                 </div>
 
@@ -325,6 +368,16 @@ export function TemplateStudio({
         </div>
 
         <div className="note-block compact-note">
+          <strong>Marca atual do template</strong>
+          <p>
+            <strong>{activeBrandName}</strong>
+            {hasBrandLogo
+              ? ' com logo configurada.'
+              : ' sem logo definida ainda. Abra Configuração para ajustar isso.'}
+          </p>
+        </div>
+
+        <div className="note-block compact-note">
           <strong>Variáveis prontas para uso</strong>
           <div className="pill-row">
             {availableFields.map((field) => (
@@ -338,7 +391,7 @@ export function TemplateStudio({
         <div className="preview-shell mail-preview-shell">
           <div className="preview-header">
             <span>Assunto</span>
-            <strong>{preview?.subject || 'Sem assunto'}</strong>
+            <strong>{preview?.subject || configDraft?.subject || 'Sem assunto definido'}</strong>
           </div>
 
           {preview?.type === 'remote_dynamic_template' ? (
@@ -359,7 +412,7 @@ export function TemplateStudio({
             <div className="preview-frame mail-preview-frame">
               <div className="preview-empty-state">
                 <strong>O preview aparece aqui</strong>
-                <p>Escolha um shell, escreva o texto e revise o resultado.</p>
+                <p>Escolha uma moldura, escreva no editor e revise o resultado final.</p>
               </div>
             </div>
           )}
