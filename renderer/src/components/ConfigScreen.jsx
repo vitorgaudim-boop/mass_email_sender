@@ -40,6 +40,24 @@ export function ConfigScreen({
 
         <div className="form-grid two-columns">
           <label>
+            <span>Nome da marca</span>
+            <input
+              className="input-field"
+              value={configDraft.brandName}
+              onChange={(event) => updateField('brandName', event.target.value)}
+              placeholder="Rakuten Advertising"
+            />
+          </label>
+          <label>
+            <span>URL da logo da marca</span>
+            <input
+              className="input-field"
+              value={configDraft.brandLogoUrl}
+              onChange={(event) => updateField('brandLogoUrl', event.target.value)}
+              placeholder="https://..."
+            />
+          </label>
+          <label>
             <span>Email do remetente</span>
             <input
               className="input-field"
@@ -146,6 +164,15 @@ export function ConfigScreen({
               placeholder="auditoria@empresa.com"
             />
           </label>
+          <label>
+            <span>ASM Group ID</span>
+            <input
+              className="input-field"
+              value={configDraft.asmGroupId}
+              onChange={(event) => updateField('asmGroupId', event.target.value)}
+              placeholder="Opcional. Ex.: 12345"
+            />
+          </label>
           <label className="toggle-row">
             <input
               type="checkbox"
@@ -161,6 +188,17 @@ export function ConfigScreen({
           <label className="toggle-row">
             <input
               type="checkbox"
+              checked={configDraft.enableSubscriptionTracking}
+              onChange={(event) => updateField('enableSubscriptionTracking', event.target.checked)}
+            />
+            <div>
+              <strong>Ativar unsubscribe padrao</strong>
+              <p>Usa `tracking_settings.subscription_tracking` do SendGrid para anexar o link de unsubscribe em todos os emails.</p>
+            </div>
+          </label>
+          <label className="toggle-row">
+            <input
+              type="checkbox"
               checked={configDraft.autoDeleteTempContacts}
               onChange={(event) => updateField('autoDeleteTempContacts', event.target.checked)}
             />
@@ -169,6 +207,15 @@ export function ConfigScreen({
               <p>O historico agregado fica salvo, mas o buffer da importacao e removido apos a campanha.</p>
             </div>
           </label>
+        </div>
+
+        <div className="note-block">
+          <strong>Branding e compliance</strong>
+          <p>
+            A URL da logo entra automaticamente na variavel <code>{'{{brand_logo_url}}'}</code>.
+            O nome da marca entra em <code>{'{{brand_name}}'}</code>. O unsubscribe fica ativo por
+            padrao e o ASM Group ID e opcional para quem usa suppression groups no SendGrid.
+          </p>
         </div>
 
         {configDraft.sendMode === 'shared_bcc' ? (

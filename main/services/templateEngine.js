@@ -1,5 +1,6 @@
 import { convert } from 'html-to-text';
 import {
+  buildBrandVariables,
   buildContactVariables,
   normalizeSubject,
   sanitizeText,
@@ -72,7 +73,10 @@ export function buildPreviewContext(contact, additional = {}) {
 }
 
 export function renderLocalTemplate({ template, contact, campaignConfig = {}, additionalContext = {} }) {
-  const context = buildPreviewContext(contact, additionalContext);
+  const context = buildPreviewContext(contact, {
+    ...buildBrandVariables(campaignConfig),
+    ...additionalContext
+  });
   const html = renderSection(template.html, context, { escapeValues: true });
   const textFromTemplate = renderSection(template.text, context, { escapeValues: false });
   const text =

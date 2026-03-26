@@ -10,8 +10,14 @@ import { exportCampaignResultsCsv } from './services/reportService.js';
 function buildBootstrap(database) {
   return {
     contacts: database.listTempContacts(),
-    templateDraft: database.getTemplateDraft() || DEFAULT_TEMPLATE_DRAFT,
-    configDraft: database.getConfigDraft() || DEFAULT_SEND_CONFIG,
+    templateDraft: {
+      ...DEFAULT_TEMPLATE_DRAFT,
+      ...(database.getTemplateDraft() || {})
+    },
+    configDraft: {
+      ...DEFAULT_SEND_CONFIG,
+      ...(database.getConfigDraft() || {})
+    },
     history: database.listCampaignHistory()
   };
 }

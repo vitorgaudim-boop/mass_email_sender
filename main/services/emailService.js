@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import {
+  buildBrandVariables,
   buildContactVariables,
   isValidEmail,
   normalizeHeaderPairs,
@@ -8,6 +9,10 @@ import {
   sanitizeText
 } from './validation.js';
 import { extractTemplateVariables, renderLocalTemplate, summarizeTemplate } from './templateEngine.js';
+import {
+  DEFAULT_SUBSCRIPTION_TRACKING_HTML,
+  DEFAULT_SUBSCRIPTION_TRACKING_TEXT
+} from '../../shared/constants.js';
 
 function delay(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -40,11 +45,46 @@ function parseAddressLists(config) {
     throw new Error(`Existem enderecos invalidos em BCC: ${bcc.errors.join(', ')}`);
   }
 
+  if (cc.recipients.length > 1000) {
+    throw new Error('A lista fixa de CC nao pode ultrapassar 1000 enderecos.');
+  }
+
+  if (bcc.recipients.length > 1000) {
+    throw new Error('A lista fixa de BCC nao pode ultrapassar 1000 enderecos.');
+  }
+
   return { cc: cc.recipients, bcc: bcc.recipients };
+}
+
+function buildTrackingSettings(config) {
+  if (!config.enableSubscriptionTracking) {
+    return null;
+  }
+
+  return {
+    subscription_tracking: {
+      enable: true,
+      text: config.subscriptionTrackingText || DEFAULT_SUBSCRIPTION_TRACKING_TEXT,
+      html: config.subscriptionTrackingHtml || DEFAULT_SUBSCRIPTION_TRACKING_HTML
+    }
+  };
+}
+
+function buildAsm(config) {
+  const groupId = Number(config.asmGroupId);
+  if (!Number.isInteger(groupId) || groupId <= 0) {
+    return null;
+  }
+
+  return {
+    group_id: groupId
+  };
 }
 
 function buildBaseMessage(config, template, renderedContent = null) {
   const headers = normalizeHeaderPairs(config.customHeaders);
+  const trackingSettings = buildTrackingSettings(config);
+  const asm = buildAsm(config);
   const baseMessage = {
     from: {
       email: config.senderEmail,
@@ -58,6 +98,8 @@ function buildBaseMessage(config, template, renderedContent = null) {
           }
         }
       : {}),
+    ...(trackingSettings ? { tracking_settings: trackingSettings } : {}),
+    ...(asm ? { asm } : {}),
     ...(headers.length
       ? {
           headers: Object.fromEntries(headers.map((header) => [header.key, header.value]))
@@ -99,7 +141,10 @@ function buildPersonalizationMetadata(campaignId, batchIndex, contact) {
 }
 
 function buildDynamicPersonalization(contact, config, ccList, bccList, campaignId, batchIndex) {
-  const data = buildContactVariables(contact);
+  const data = {
+    ...buildContactVariables(contact),
+    ...buildBrandVariables(config)
+  };
 
   return {
     to: [sanitizeAddress(contact)],
@@ -310,11 +355,19 @@ export class EmailService {
       }
     }
 
+    if (config.asmGroupId && (!Number.isInteger(Number(config.asmGroupId)) || Number(config.asmGroupId) <= 0)) {
+      throw new Error('O ASM Group ID precisa ser um numero inteiro positivo.');
+    }
+
     if (!contacts.length) {
       throw new Error('Nao ha contatos elegiveis para envio.');
     }
 
-    parseAddressLists(config);
+    const { bcc } = parseAddressLists(config);
+
+    if (config.sendMode === 'shared_bcc' && config.batchSize + bcc.length > 1000) {
+      throw new Error('No modo BCC compartilhado, lote + BCC fixo nao podem ultrapassar 1000 destinatarios por requisicao.');
+    }
   }
 
   summarizeTemplate(template) {

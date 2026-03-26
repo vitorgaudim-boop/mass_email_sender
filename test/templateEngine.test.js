@@ -14,7 +14,7 @@ describe('templateEngine', () => {
   it('escapes HTML when rendering local content', () => {
     const result = renderLocalTemplate({
       template: {
-        html: '<p>{{name}}</p>',
+        html: '<img src="{{brand_logo_url}}" alt="{{brand_name}}" /><p>{{name}}</p>',
         text: '',
         subject: 'Cupom {{name}}'
       },
@@ -24,11 +24,15 @@ describe('templateEngine', () => {
         variables: {}
       },
       campaignConfig: {
-        subject: 'Fallback'
+        subject: 'Fallback',
+        brandName: 'Rakuten Advertising',
+        brandLogoUrl: 'https://cdn.example.com/logo.png'
       }
     });
 
     expect(result.subject).toBe('Cupom <script>alert(1)</script>');
+    expect(result.html).toContain('https://cdn.example.com/logo.png');
+    expect(result.html).toContain('Rakuten Advertising');
     expect(result.html).toContain('&lt;script&gt;alert(1)&lt;/script&gt;');
     expect(result.html).not.toContain('<script>');
     expect(result.text).toContain('<script>alert(1)</script>');

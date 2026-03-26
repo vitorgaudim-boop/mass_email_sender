@@ -10,11 +10,15 @@ export function Sidebar({ activeScreen, onSelectScreen, totalContacts, historyCo
   return (
     <aside className="sidebar">
       <div className="sidebar-brand">
-        <p className="sidebar-tag">Rakuten-inspired desktop flow</p>
+        <p className="sidebar-tag">Rakuten Advertising</p>
+        <div className="brand-wordmark">
+          <span className="brand-rakuten">Rakuten</span>
+          <span className="brand-advertising">Advertising</span>
+        </div>
         <h2>Envio de Email</h2>
         <p>
-          Operacao limpa, filas previsiveis e um ritmo de campanha pensado para listas grandes sem
-          perder controle.
+          Filas previsiveis, personalizacao segura e governanca de envio para operacoes Rakuten em
+          escala.
         </p>
       </div>
 

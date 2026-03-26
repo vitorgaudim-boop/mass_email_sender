@@ -25,6 +25,8 @@ Desktop app em Electron para envio massivo de emails com SendGrid, com filas rob
 - Mostra progresso ao vivo, logs operacionais, ETA e lote atual
 - Gera relatorio final e exporta CSV
 - Salva historico agregado em SQLite
+- Ativa `unsubscribe` padrao via `tracking_settings.subscription_tracking`
+- Exponibiliza `{{brand_logo_url}}` e `{{brand_name}}` para templates locais e dinamicos
 
 ## Regras importantes de SendGrid implementadas
 
@@ -33,6 +35,8 @@ Desktop app em Electron para envio massivo de emails com SendGrid, com filas rob
 - O tamanho do lote e validado entre `1` e `1000`
 - Templates dinamicos exigem `template_id` iniciando com `d-`
 - Headers reservados do SendGrid sao bloqueados no editor de headers
+- O app pode incluir `tracking_settings.subscription_tracking` por padrao em todos os envios
+- O app aceita `asm.group_id` opcional para suppression groups
 - No modo `BCC` compartilhado, a personalizacao por contato e desativada
 - Para template local com personalizacao, o app usa uma requisicao por contato porque `content` e nivel de mensagem no `mail/send`
 - O dashboard/report v1 considera sucesso como `202 Accepted` do SendGrid, mais falhas locais e falhas de API; eventos de entrega nao fazem parte desta versao
@@ -42,6 +46,7 @@ Desktop app em Electron para envio massivo de emails com SendGrid, com filas rob
 ```text
 main/
   main.js
+  preload.cjs
   preload.js
   ipc.js
   services/
@@ -89,6 +94,26 @@ No app instalado, o `.env` pode ficar em qualquer um destes locais:
 - no diretório de onde o app foi iniciado
 - em `%APPDATA%\\Envio de Email\\.env`
 
+## Branding Rakuten
+
+- O instalador e o executavel usam `rakuten_logo.ico`
+- A tela de configuracao tem os campos `Nome da marca` e `URL da logo da marca`
+- O template pode usar:
+  - `{{brand_name}}`
+  - `{{brand_logo_url}}`
+
+Exemplo:
+
+```html
+<img src="{{brand_logo_url}}" alt="{{brand_name}}" />
+```
+
+## Unsubscribe
+
+- O app sai com `unsubscribe` padrao ligado
+- Isso usa `tracking_settings.subscription_tracking` do SendGrid
+- Se sua conta usa suppression groups, preencha o `ASM Group ID` na tela de configuracao
+
 ## Como rodar
 
 ```bash
@@ -114,14 +139,14 @@ Saidas esperadas:
 - `dist/release/win-unpacked/`
 - `dist/release/Envio de Email Setup 1.0.0.exe`
 
-Observacao: o build atual usa o icone padrao do Electron. Se quiser branding proprio, adicione um `icon.ico` e ajuste o `build.win` no `package.json`.
+Observacao: o build atual usa `rakuten_logo.ico` como icone do executavel e do instalador.
 
 ## Fluxo recomendado de uso
 
 1. Importe a planilha `.xlsx`
 2. Revise linhas invalidas ou exclua contatos do envio
 3. Importe o template `.html` ou `.eml`, ou informe um `template_id` dinamico
-4. Ajuste remetente, assunto, lote, delay, headers e listas CC/BCC
+4. Ajuste marca, logo, remetente, assunto, lote, delay, unsubscribe, headers e listas CC/BCC
 5. Envie um teste
 6. Inicie a campanha
 7. Acompanhe o dashboard

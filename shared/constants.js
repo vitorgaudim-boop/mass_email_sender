@@ -1,8 +1,18 @@
+export const DEFAULT_BRAND_NAME = 'Rakuten Advertising';
+export const DEFAULT_BRAND_LOGO_URL =
+  'https://content.rd.linksynergy.com/CreativeCommunications/RakutenAdvertising/RAD-logo-400x50-8529CD.png';
+export const DEFAULT_SUBSCRIPTION_TRACKING_TEXT =
+  'Para deixar de receber estes emails, use o link de unsubscribe ao final desta mensagem. To stop receiving these emails, use the unsubscribe link at the end of this message.';
+export const DEFAULT_SUBSCRIPTION_TRACKING_HTML =
+  '<p style="margin:24px 0 0;font-family:Arial,Helvetica,sans-serif;font-size:12px;line-height:1.6;color:#6f5f78;">Para deixar de receber estes emails, use o link de unsubscribe ao final desta mensagem.<br/>To stop receiving these emails, use the unsubscribe link at the end of this message.</p>';
+
 export const DEFAULT_SEND_CONFIG = {
   senderEmail: '',
   senderName: '',
   replyToEmail: '',
   replyToName: '',
+  brandName: DEFAULT_BRAND_NAME,
+  brandLogoUrl: DEFAULT_BRAND_LOGO_URL,
   subject: '',
   batchSize: 200,
   delayMs: 2000,
@@ -15,6 +25,10 @@ export const DEFAULT_SEND_CONFIG = {
   visibleToName: '',
   ccListText: '',
   bccListText: '',
+  enableSubscriptionTracking: true,
+  asmGroupId: '',
+  subscriptionTrackingText: DEFAULT_SUBSCRIPTION_TRACKING_TEXT,
+  subscriptionTrackingHtml: DEFAULT_SUBSCRIPTION_TRACKING_HTML,
   customHeaders: [],
   autoDeleteTempContacts: true
 };

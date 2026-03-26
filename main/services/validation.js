@@ -1,4 +1,5 @@
 import validator from 'validator';
+import { DEFAULT_BRAND_LOGO_URL, DEFAULT_BRAND_NAME } from '../../shared/constants.js';
 
 export const RESERVED_HEADERS = new Set([
   'x-sg-id',
@@ -89,6 +90,21 @@ export function sanitizeCustomVariables(record) {
   }
 
   return cleanRecord;
+}
+
+export function buildBrandVariables(config = {}) {
+  return {
+    brand_name:
+      sanitizeText(config.brandName || DEFAULT_BRAND_NAME, {
+        maxLength: 120,
+        allowEmpty: false
+      }) || DEFAULT_BRAND_NAME,
+    brand_logo_url:
+      sanitizeText(config.brandLogoUrl || DEFAULT_BRAND_LOGO_URL, {
+        maxLength: 1000,
+        allowEmpty: false
+      }) || DEFAULT_BRAND_LOGO_URL
+  };
 }
 
 export function parseAddressToken(token) {

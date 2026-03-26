@@ -1,17 +1,17 @@
 :root {
-  --bg: #f7f1ef;
-  --surface: #fffaf7;
+  --bg: #f5f0fb;
+  --surface: #fcfaff;
   --surface-strong: #ffffff;
-  --ink: #221816;
-  --muted: #6b5753;
-  --line: rgba(34, 24, 22, 0.08);
-  --accent: #bf0000;
-  --accent-soft: #ffe4df;
-  --accent-deep: #7d0000;
+  --ink: #24172e;
+  --muted: #6d6178;
+  --line: rgba(36, 23, 46, 0.08);
+  --accent: #8529cd;
+  --accent-soft: #f1e4ff;
+  --accent-deep: #5d1697;
   --success: #0f7a4f;
   --warning: #9b5d00;
   --danger: #8d1d1d;
-  --shadow: 0 24px 60px rgba(84, 31, 18, 0.1);
+  --shadow: 0 28px 64px rgba(62, 20, 94, 0.12);
 }
 
 * {
@@ -21,8 +21,8 @@
 body {
   margin: 0;
   background:
-    radial-gradient(circle at top left, rgba(191, 0, 0, 0.08), transparent 30%),
-    linear-gradient(180deg, #fff7f3 0%, var(--bg) 100%);
+    radial-gradient(circle at top left, rgba(133, 41, 205, 0.16), transparent 28%),
+    linear-gradient(180deg, #fdfaff 0%, var(--bg) 100%);
   color: var(--ink);
   font-family: 'Space Grotesk', 'Segoe UI', sans-serif;
 }
@@ -50,9 +50,13 @@ button {
 
 .sidebar {
   background:
-    linear-gradient(165deg, rgba(191, 0, 0, 0.95), rgba(120, 0, 0, 0.93)),
-    linear-gradient(180deg, rgba(255, 255, 255, 0.04), transparent);
-  color: #fff7f5;
+    radial-gradient(circle at 48px 48px, rgba(255, 255, 255, 0.38) 0 4px, transparent 5px),
+    radial-gradient(circle at 96px 48px, rgba(255, 255, 255, 0.18) 0 4px, transparent 5px),
+    radial-gradient(circle at 144px 48px, rgba(255, 255, 255, 0.18) 0 4px, transparent 5px),
+    radial-gradient(circle at 48px 96px, rgba(255, 255, 255, 0.18) 0 4px, transparent 5px),
+    radial-gradient(circle at 96px 96px, rgba(255, 255, 255, 0.12) 0 4px, transparent 5px),
+    linear-gradient(165deg, rgba(133, 41, 205, 0.98), rgba(108, 28, 180, 0.96));
+  color: #fdf9ff;
   padding: 42px 28px;
   display: flex;
   flex-direction: column;
@@ -67,13 +71,34 @@ button {
   letter-spacing: -0.03em;
 }
 
+.brand-wordmark {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin: 10px 0 14px;
+  color: white;
+}
+
+.brand-rakuten {
+  font-size: 2.2rem;
+  font-weight: 700;
+  letter-spacing: -0.06em;
+}
+
+.brand-advertising {
+  font-size: 1.55rem;
+  font-weight: 500;
+  letter-spacing: -0.05em;
+  opacity: 0.96;
+}
+
 .sidebar-brand h2 {
   font-size: 2.25rem;
   line-height: 1;
 }
 
 .sidebar-brand p {
-  color: rgba(255, 245, 243, 0.8);
+  color: rgba(253, 249, 255, 0.82);
 }
 
 .sidebar-tag,
@@ -81,11 +106,11 @@ button {
   text-transform: uppercase;
   letter-spacing: 0.18em;
   font-size: 0.7rem;
-  color: rgba(255, 245, 243, 0.68);
+  color: rgba(253, 249, 255, 0.7);
 }
 
 .eyebrow {
-  color: rgba(107, 87, 83, 0.8);
+  color: rgba(109, 97, 120, 0.82);
 }
 
 .sidebar-nav {
@@ -222,8 +247,8 @@ button {
 }
 
 .panel {
-  background: rgba(255, 250, 247, 0.92);
-  border: 1px solid rgba(84, 31, 18, 0.08);
+  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid rgba(62, 20, 94, 0.08);
   border-radius: 28px;
   padding: 24px;
   box-shadow: var(--shadow);
@@ -300,7 +325,7 @@ button {
 
 .segment.active {
   background: var(--accent-soft);
-  border-color: rgba(191, 0, 0, 0.25);
+  border-color: rgba(133, 41, 205, 0.25);
   color: var(--accent-deep);
 }
 
@@ -326,14 +351,14 @@ button {
 .data-table th,
 .data-table td {
   padding: 14px 16px;
-  border-bottom: 1px solid rgba(34, 24, 22, 0.06);
+  border-bottom: 1px solid rgba(36, 23, 46, 0.06);
   text-align: left;
 }
 
 .data-table thead {
   position: sticky;
   top: 0;
-  background: rgba(255, 250, 247, 0.95);
+  background: rgba(252, 250, 255, 0.96);
 }
 
 .row-invalid {
@@ -348,7 +373,7 @@ button {
   width: 100%;
   padding: 14px 16px;
   border-radius: 16px;
-  border: 1px solid rgba(84, 31, 18, 0.12);
+  border: 1px solid rgba(62, 20, 94, 0.12);
   background: rgba(255, 255, 255, 0.9);
 }
 
@@ -399,8 +424,8 @@ textarea.input-field {
 .note-block {
   padding: 18px;
   border-radius: 20px;
-  background: rgba(191, 0, 0, 0.05);
-  border: 1px solid rgba(191, 0, 0, 0.12);
+  background: rgba(133, 41, 205, 0.06);
+  border: 1px solid rgba(133, 41, 205, 0.12);
 }
 
 .editor-shell {
@@ -421,7 +446,7 @@ textarea.input-field {
 }
 
 .editor-fallback:focus {
-  outline: 2px solid rgba(191, 0, 0, 0.25);
+  outline: 2px solid rgba(133, 41, 205, 0.25);
   outline-offset: -2px;
 }
 
@@ -442,7 +467,7 @@ textarea.input-field {
 
 .variable-pill {
   background: white;
-  border: 1px solid rgba(191, 0, 0, 0.14);
+  border: 1px solid rgba(133, 41, 205, 0.16);
   color: var(--accent-deep);
 }
 
@@ -497,14 +522,14 @@ textarea.input-field {
 
 .progress-bar {
   height: 14px;
-  background: rgba(191, 0, 0, 0.08);
+  background: rgba(133, 41, 205, 0.1);
   border-radius: 999px;
   overflow: hidden;
 }
 
 .progress-fill {
   height: 100%;
-  background: linear-gradient(90deg, var(--accent), #ff6e5d);
+  background: linear-gradient(90deg, var(--accent), #b96ff5);
   border-radius: inherit;
 }
 
@@ -520,7 +545,7 @@ textarea.input-field {
 
 .log-entry {
   padding: 16px 18px;
-  border-bottom: 1px solid rgba(34, 24, 22, 0.05);
+  border-bottom: 1px solid rgba(36, 23, 46, 0.05);
 }
 
 .log-entry span {
@@ -559,7 +584,7 @@ textarea.input-field {
 }
 
 .history-item.active {
-  border-color: rgba(191, 0, 0, 0.2);
+  border-color: rgba(133, 41, 205, 0.2);
   background: var(--accent-soft);
 }
 

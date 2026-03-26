@@ -8,9 +8,10 @@ import { DashboardScreen } from './components/DashboardScreen.jsx';
 import { ReportScreen } from './components/ReportScreen.jsx';
 
 const FINAL_STATUSES = new Set(['concluida', 'concluida_com_falhas', 'cancelada', 'interrompida']);
+const STATIC_TEMPLATE_FIELDS = ['email', 'name', 'brand_name', 'brand_logo_url'];
 
 function buildAvailableFields(contacts) {
-  const fieldSet = new Set(['email', 'name']);
+  const fieldSet = new Set(STATIC_TEMPLATE_FIELDS);
 
   for (const contact of contacts) {
     Object.keys(contact.variables || {}).forEach((key) => fieldSet.add(key));
@@ -335,11 +336,11 @@ export function App() {
       <main className="workspace">
         <header className="workspace-header">
           <div>
-            <p className="eyebrow">Bulk Email Sender</p>
+            <p className="eyebrow">Rakuten Email Operations</p>
             <h1>Envio de Email</h1>
             <p className="workspace-copy">
-              Campanhas com SendGrid, lotes controlados, feedback em tempo real e limpeza consciente
-              de dados sensiveis.
+              Campanhas SendGrid com branding centralizado, unsubscribe padrao, lotes controlados e
+              feedback em tempo real.
             </p>
           </div>
           <div className="workspace-actions">

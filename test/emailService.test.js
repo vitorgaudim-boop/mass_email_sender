@@ -18,6 +18,14 @@ const baseConfig = {
   visibleToName: '',
   ccListText: '',
   bccListText: '',
+  brandName: 'Rakuten Advertising',
+  brandLogoUrl: 'https://cdn.example.com/rakuten.png',
+  enableSubscriptionTracking: true,
+  asmGroupId: '',
+  subscriptionTrackingText:
+    'Para deixar de receber estes emails, use o link de unsubscribe ao final desta mensagem.',
+  subscriptionTrackingHtml:
+    '<p>Para deixar de receber estes emails, use o link de unsubscribe ao final desta mensagem.</p>',
   customHeaders: [],
   autoDeleteTempContacts: true
 };
@@ -70,6 +78,10 @@ describe('emailService', () => {
 
     expect(requests).toHaveLength(1);
     expect(requests[0].payload.personalizations).toHaveLength(2);
+    expect(requests[0].payload.personalizations[0].dynamic_template_data.brand_logo_url).toBe(
+      'https://cdn.example.com/rakuten.png'
+    );
+    expect(requests[0].payload.tracking_settings.subscription_tracking.enable).toBe(true);
   });
 
   it('rejects shared BCC mode when personalization is still enabled', () => {
@@ -89,5 +101,46 @@ describe('emailService', () => {
         contacts
       )
     ).toThrow(/BCC compartilhado/);
+  });
+
+  it('adds ASM group when configured', () => {
+    const requests = service.buildBatchRequests({
+      contacts,
+      template: {
+        mode: 'local',
+        html: '<p>Ola {{name}}</p>',
+        text: '',
+        subject: ''
+      },
+      config: {
+        ...baseConfig,
+        asmGroupId: '12345'
+      },
+      campaignId: 'cmp-3',
+      batchIndex: 1
+    });
+
+    expect(requests[0].payload.asm.group_id).toBe(12345);
+  });
+
+  it('rejects shared BCC requests that exceed SendGrid recipient cap', () => {
+    expect(() =>
+      service.validateConfig(
+        {
+          ...baseConfig,
+          sendMode: 'shared_bcc',
+          enablePersonalization: false,
+          batchSize: 1000,
+          bccListText: 'audit@example.com'
+        },
+        {
+          mode: 'local',
+          html: '<p>oi</p>',
+          text: '',
+          subject: ''
+        },
+        contacts
+      )
+    ).toThrow(/1000 destinatarios/);
   });
 });

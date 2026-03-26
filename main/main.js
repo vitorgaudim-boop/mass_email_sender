@@ -13,6 +13,16 @@ const __dirname = path.dirname(__filename);
 
 let mainWindow = null;
 
+function getWindowIconPath() {
+  const runtimeCandidates = [
+    path.join(process.resourcesPath, 'rakuten_logo.ico'),
+    path.join(app.getAppPath(), 'rakuten_logo.ico'),
+    path.join(process.cwd(), 'rakuten_logo.ico')
+  ];
+
+  return runtimeCandidates.find((candidate) => fs.existsSync(candidate));
+}
+
 function getRendererPath() {
   return path.join(app.getAppPath(), 'dist', 'renderer', 'index.html');
 }
@@ -42,8 +52,9 @@ function createWindow() {
     height: 980,
     minWidth: 1180,
     minHeight: 760,
-    backgroundColor: '#f7f1ef',
+    backgroundColor: '#f5f0fb',
     autoHideMenuBar: true,
+    ...(getWindowIconPath() ? { icon: getWindowIconPath() } : {}),
     webPreferences: {
       preload: path.join(__dirname, 'preload.cjs'),
       contextIsolation: true,

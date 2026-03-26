@@ -54,10 +54,14 @@
       "dist/renderer/**/*",
       "package.json"
     ],
+    "extraResources": [
+      "rakuten_logo.ico"
+    ],
     "directories": {
       "output": "dist/release"
     },
     "win": {
+      "icon": "rakuten_logo.ico",
       "signAndEditExecutable": false,
       "target": [
         {
