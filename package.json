@@ -1,6 +1,6 @@
 {
   "name": "envio-de-email",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Desktop bulk email sender for SendGrid campaigns.",
   "type": "module",
   "main": "main/main.js",
