@@ -13,8 +13,7 @@ const STATIC_TEMPLATE_FIELDS = [
   'email',
   'name',
   'brand_name',
-  'brand_logo_url',
-  'brand_logo_white_url'
+  'brand_logo_url'
 ];
 
 function buildAvailableFields(contacts) {
@@ -546,6 +545,7 @@ export function App() {
               setTestState={setTestState}
               sendingTest={busyState.sendingTest}
               startingCampaign={busyState.startingCampaign}
+              onChangeConfig={setConfigDraft}
               onSendTest={handleSendTest}
               onStartCampaign={handleStartCampaign}
             />

@@ -9,6 +9,7 @@ export function SendScreen({
   setTestState,
   sendingTest,
   startingCampaign,
+  onChangeConfig,
   onSendTest,
   onStartCampaign
 }) {
@@ -39,6 +40,20 @@ export function SendScreen({
         </div>
 
         <div className="stats-grid">
+          <article className="metric-card metric-card-wide">
+            <span>Assunto do email</span>
+            <input
+              className="input-field"
+              value={configDraft.subject}
+              onChange={(event) =>
+                onChangeConfig({
+                  ...configDraft,
+                  subject: event.target.value
+                })
+              }
+              placeholder="Ex.: Atualização importante sobre sua operação"
+            />
+          </article>
           <article className="metric-card">
             <span>Contatos elegíveis</span>
             <strong>{totalEligibleContacts}</strong>

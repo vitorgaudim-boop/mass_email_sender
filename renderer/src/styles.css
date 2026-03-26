@@ -338,6 +338,10 @@ button {
   border: 1px solid var(--line);
 }
 
+.metric-card .input-field {
+  margin-top: 10px;
+}
+
 .stat-chip span,
 .metric-card span,
 .progress-labels span,
@@ -352,6 +356,10 @@ button {
 .progress-labels strong,
 .preview-header strong {
   font-size: 1.5rem;
+}
+
+.metric-card-wide {
+  grid-column: 1 / -1;
 }
 
 .table-toolbar,
@@ -427,6 +435,12 @@ button {
   overflow: auto;
 }
 
+.group-action-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
 .group-card {
   border-radius: 18px;
   border: 1px solid var(--line);
@@ -465,6 +479,30 @@ button {
   align-items: center;
 }
 
+.selection-summary {
+  display: grid;
+  gap: 4px;
+  padding: 12px 14px;
+  border-radius: 16px;
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.78);
+  margin-bottom: 12px;
+}
+
+.selection-summary.compact {
+  margin-bottom: 0;
+}
+
+.selection-summary strong {
+  font-size: 0.98rem;
+}
+
+.selection-summary span {
+  color: var(--muted);
+  line-height: 1.45;
+  font-size: 0.92rem;
+}
+
 .data-table {
   width: 100%;
   border-collapse: collapse;
@@ -483,12 +521,44 @@ button {
   background: rgba(252, 250, 255, 0.96);
 }
 
+.table-checkbox-cell {
+  width: 48px;
+}
+
 .row-invalid {
   background: rgba(141, 29, 29, 0.06);
 }
 
 .row-muted {
   opacity: 0.65;
+}
+
+.group-chip-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.group-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: rgba(133, 41, 205, 0.08);
+  color: var(--accent-deep);
+  font-size: 0.8rem;
+}
+
+.row-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.mini-button {
+  padding: 8px 10px;
+  border-radius: 12px;
+  font-size: 0.82rem;
 }
 
 .input-field {
@@ -525,6 +595,12 @@ textarea.input-field {
   display: grid;
   gap: 8px;
   color: var(--muted);
+}
+
+.field-help {
+  color: var(--muted);
+  line-height: 1.4;
+  font-size: 0.86rem;
 }
 
 .full-span {
@@ -810,9 +886,29 @@ textarea.input-field {
   line-height: 1.45;
 }
 
+.template-shell-card-meta {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  align-items: center;
+}
+
 .template-shell-card.active {
   border-color: rgba(133, 41, 205, 0.28);
   background: linear-gradient(180deg, rgba(241, 228, 255, 0.72), rgba(255, 255, 255, 0.95));
+}
+
+.template-check-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 7px 10px;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #7f2ac3, #5d1697);
+  color: #ffffff;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  box-shadow: 0 10px 20px rgba(79, 23, 124, 0.18);
 }
 
 .template-shell-thumb {
@@ -1328,7 +1424,8 @@ textarea.input-field {
   .template-quickstart,
   .template-library,
   .template-editor-toolbar,
-  .toggle-grid {
+  .toggle-grid,
+  .group-action-grid {
     grid-template-columns: 1fr;
   }
 

@@ -18,7 +18,7 @@ function ShellThumb({ preset }) {
       >
         <div
           className="template-shell-thumb-logo"
-          style={{ background: preset.useWhiteLogo ? 'rgba(255,255,255,0.92)' : '#7b27c0' }}
+          style={{ background: '#7b27c0' }}
         />
         <div
           className="template-shell-thumb-title"
@@ -203,22 +203,26 @@ export function TemplateStudio({
         ) : (
           <>
             <div className="template-shell-grid">
-              {BUILT_IN_TEMPLATES.map((preset) => (
-                <button
-                  key={preset.id}
-                  className={
-                    templateDraft.presetId === preset.id && templateDraft.sourceType === 'preset'
-                      ? 'template-shell-card active'
-                      : 'template-shell-card'
-                  }
-                  onClick={() => applyPreset(preset)}
-                >
-                  <ShellThumb preset={preset} />
-                  <span className="template-category">{preset.category}</span>
-                  <strong>{preset.name}</strong>
-                  <small>{preset.description}</small>
-                </button>
-              ))}
+              {BUILT_IN_TEMPLATES.map((preset) => {
+                const isActive =
+                  templateDraft.presetId === preset.id && templateDraft.sourceType === 'preset';
+
+                return (
+                  <button
+                    key={preset.id}
+                    className={isActive ? 'template-shell-card active' : 'template-shell-card'}
+                    onClick={() => applyPreset(preset)}
+                  >
+                    <ShellThumb preset={preset} />
+                    <div className="template-shell-card-meta">
+                      <span className="template-category">{preset.category}</span>
+                      {isActive ? <span className="template-check-badge">✓ Em uso</span> : null}
+                    </div>
+                    <strong>{preset.name}</strong>
+                    <small>{preset.description}</small>
+                  </button>
+                );
+              })}
             </div>
 
             {isPresetMode ? (
@@ -331,8 +335,8 @@ export function TemplateStudio({
                   <strong>Fluxo recomendado</strong>
                   <p>
                     1. Escolha a moldura visual. 2. Escreva o conteúdo no editor rico. 3. Defina o
-                    assunto na tela de configuração. 4. Revise a prévia com unsubscribe e envie um
-                    teste na tela de disparo.
+                    assunto na tela de configuração ou direto em Disparo. 4. Revise a prévia com
+                    unsubscribe e envie um teste na tela de disparo.
                   </p>
                 </div>
               </div>

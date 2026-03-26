@@ -114,6 +114,9 @@ export function ConfigScreen({ configDraft, onChangeConfig }) {
                   onChange={(event) => updateField('subject', event.target.value)}
                   placeholder="Ex.: Atualização importante sobre sua operação"
                 />
+                <small className="field-help">
+                  Você também pode ajustar esse assunto diretamente na tela de <strong>Disparo</strong>.
+                </small>
               </label>
             </div>
           </section>

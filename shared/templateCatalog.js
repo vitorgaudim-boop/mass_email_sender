@@ -64,7 +64,7 @@ function normalizeSignature(signature) {
 
 function buildShellHtml(shell, composer) {
   const fontFamily = composer.fontFamily || DEFAULT_TEMPLATE_FONT_FAMILY;
-  const logoSource = shell.useWhiteLogo ? '{{brand_logo_white_url}}' : '{{brand_logo_url}}';
+  const logoSource = '{{brand_logo_url}}';
   const eyebrowText = composer.eyebrow || shell.eyebrow || '';
   const eyebrowHtml = eyebrowText
     ? `
@@ -226,17 +226,19 @@ export const BUILT_IN_TEMPLATES = [
     id: 'hero_soft',
     name: 'Hero executivo',
     category: 'Relacionamento',
-    description: 'Header forte, mais premium, com contraste alto e logo branca.',
+    description: 'Header forte, mais premium, com contraste alto e logo roxa em placa clara.',
     eyebrow: 'Comunicado',
     eyebrowColor: 'rgba(255,255,255,0.76)',
     pageBackground: '#f3edf8',
     headerBackground: 'linear-gradient(135deg,#5c1793 0%, #8c34d1 100%)',
     headerPadding: '34px 38px 30px',
     headerAlign: 'left',
-    useWhiteLogo: true,
     logoWidth: 235,
-    logoPlateBackground: 'transparent',
-    logoPlateMargin: '0',
+    logoPlateBackground: 'rgba(255,255,255,0.96)',
+    logoPlatePadding: '12px 18px',
+    logoPlateRadius: '18px',
+    logoPlateShadow: '0 14px 30px rgba(34, 14, 55, 0.14)',
+    logoPlateMargin: '0 0 18px',
     headlineSize: '31px',
     headlineColor: '#ffffff',
     headlineMaxWidth: '420px',
@@ -305,9 +307,11 @@ export const BUILT_IN_TEMPLATES = [
     headerBackground: 'linear-gradient(180deg,#48117c 0%, #8d35d3 100%)',
     headerPadding: '20px 36px 28px',
     headerAlign: 'center',
-    useWhiteLogo: true,
     logoWidth: 225,
-    logoPlateBackground: 'transparent',
+    logoPlateBackground: 'rgba(255,255,255,0.96)',
+    logoPlatePadding: '12px 18px',
+    logoPlateRadius: '18px',
+    logoPlateShadow: '0 14px 30px rgba(34, 14, 55, 0.14)',
     logoPlateMargin: '8px auto 0',
     headlineSize: '31px',
     headlineColor: '#ffffff',

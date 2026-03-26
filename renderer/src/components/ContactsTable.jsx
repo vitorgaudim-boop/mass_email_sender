@@ -1,4 +1,4 @@
-import { useDeferredValue, useMemo, useState } from 'react';
+import { useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
 
 function countByStatus(contacts) {
   return {
@@ -27,6 +27,7 @@ export function ContactsTable({
   const [selectedIds, setSelectedIds] = useState([]);
   const [newGroupName, setNewGroupName] = useState('');
   const [targetGroupId, setTargetGroupId] = useState('');
+  const headerCheckboxRef = useRef(null);
   const deferredSearch = useDeferredValue(searchTerm);
   const metrics = useMemo(() => countByStatus(contacts), [contacts]);
 
@@ -43,6 +44,7 @@ export function ContactsTable({
         .map((group) => group.name)
         .join(' ')
         .toLowerCase();
+
       return [contact.email, contact.name, variableString, groupsString]
         .join(' ')
         .toLowerCase()
@@ -50,10 +52,35 @@ export function ContactsTable({
     });
   }, [contacts, deferredSearch]);
 
+  const filteredIds = useMemo(
+    () => filteredContacts.map((contact) => contact.id),
+    [filteredContacts]
+  );
   const selectedContacts = useMemo(
     () => contacts.filter((contact) => selectedIds.includes(contact.id)),
     [contacts, selectedIds]
   );
+  const selectedFilteredCount = useMemo(
+    () => filteredIds.filter((id) => selectedIds.includes(id)).length,
+    [filteredIds, selectedIds]
+  );
+  const allFilteredSelected = Boolean(filteredIds.length) && selectedFilteredCount === filteredIds.length;
+  const hasPartialFilteredSelection =
+    selectedFilteredCount > 0 && selectedFilteredCount < filteredIds.length;
+
+  useEffect(() => {
+    if (!headerCheckboxRef.current) {
+      return;
+    }
+
+    headerCheckboxRef.current.indeterminate = hasPartialFilteredSelection;
+  }, [hasPartialFilteredSelection]);
+
+  useEffect(() => {
+    setSelectedIds((current) =>
+      current.filter((id) => contacts.some((contact) => contact.id === id))
+    );
+  }, [contacts]);
 
   function toggleSelection(id) {
     setSelectedIds((current) =>
@@ -61,9 +88,31 @@ export function ContactsTable({
     );
   }
 
+  function toggleFilteredSelection() {
+    if (!filteredIds.length) {
+      return;
+    }
+
+    setSelectedIds((current) => {
+      if (allFilteredSelected) {
+        return current.filter((id) => !filteredIds.includes(id));
+      }
+
+      return Array.from(new Set([...current, ...filteredIds]));
+    });
+  }
+
+  function clearSelection() {
+    setSelectedIds([]);
+  }
+
   async function runBulkAction(action) {
     await action();
-    setSelectedIds([]);
+    clearSelection();
+  }
+
+  async function runRowAction(action) {
+    await action();
   }
 
   async function handleCreateGroup() {
@@ -118,7 +167,7 @@ export function ContactsTable({
           </div>
 
           <label>
-            <span>Grupo alvo para os selecionados</span>
+            <span>Grupo alvo para operações em massa</span>
             <select
               className="input-field"
               value={targetGroupId}
@@ -133,13 +182,38 @@ export function ContactsTable({
             </select>
           </label>
 
+          <div className="selection-summary compact">
+            <strong>{selectedIds.length} marcado(s)</strong>
+            <span>{filteredContacts.length} contato(s) visíveis na busca atual</span>
+          </div>
+
           <div className="inline-actions">
+            <button
+              className="ghost-button"
+              disabled={!filteredContacts.length}
+              onClick={toggleFilteredSelection}
+            >
+              {allFilteredSelected ? 'Desmarcar visíveis' : 'Marcar visíveis'}
+            </button>
+            <button className="ghost-button" disabled={!selectedIds.length} onClick={clearSelection}>
+              Limpar seleção
+            </button>
+          </div>
+
+          <div className="group-action-grid">
             <button
               className="ghost-button"
               disabled={!selectedContacts.length || !targetGroupId}
               onClick={() => runBulkAction(() => onAddSelectedToGroup(targetGroupId, selectedContacts))}
             >
-              Adicionar selecionados
+              Adicionar marcados
+            </button>
+            <button
+              className="ghost-button"
+              disabled={!filteredContacts.length || !targetGroupId}
+              onClick={() => runBulkAction(() => onAddSelectedToGroup(targetGroupId, filteredContacts))}
+            >
+              Adicionar todos da busca
             </button>
             <button
               className="ghost-button"
@@ -148,7 +222,16 @@ export function ContactsTable({
                 runBulkAction(() => onRemoveSelectedFromGroup(targetGroupId, selectedContacts))
               }
             >
-              Remover do grupo
+              Remover marcados
+            </button>
+            <button
+              className="ghost-button"
+              disabled={!filteredContacts.length || !targetGroupId}
+              onClick={() =>
+                runBulkAction(() => onRemoveSelectedFromGroup(targetGroupId, filteredContacts))
+              }
+            >
+              Remover todos da busca
             </button>
           </div>
 
@@ -157,10 +240,7 @@ export function ContactsTable({
               const active = selectedGroupIds.includes(group.id);
 
               return (
-                <article
-                  key={group.id}
-                  className={active ? 'group-card active' : 'group-card'}
-                >
+                <article key={group.id} className={active ? 'group-card active' : 'group-card'}>
                   <div className="group-card-header">
                     <div>
                       <strong>{group.name}</strong>
@@ -168,10 +248,7 @@ export function ContactsTable({
                         {group.currentContactsCount} na base atual · {group.memberCount} no grupo
                       </span>
                     </div>
-                    <button
-                      className="ghost-button danger-text"
-                      onClick={() => onDeleteGroup(group.id)}
-                    >
+                    <button className="ghost-button danger-text" onClick={() => onDeleteGroup(group.id)}>
                       Excluir
                     </button>
                   </div>
@@ -234,6 +311,13 @@ export function ContactsTable({
             <div className="inline-actions">
               <button
                 className="ghost-button"
+                disabled={!filteredContacts.length}
+                onClick={toggleFilteredSelection}
+              >
+                {allFilteredSelected ? 'Desmarcar tudo' : 'Marcar tudo'}
+              </button>
+              <button
+                className="ghost-button"
                 disabled={!selectedIds.length}
                 onClick={() => runBulkAction(() => onExcludeContacts(selectedIds, true))}
               >
@@ -256,18 +340,34 @@ export function ContactsTable({
             </div>
           </div>
 
+          <div className="selection-summary">
+            <strong>{selectedIds.length} contato(s) marcado(s)</strong>
+            <span>
+              Use o checkbox do cabeçalho para selecionar todos os contatos visíveis na busca atual.
+            </span>
+          </div>
+
           {filteredContacts.length ? (
             <div className="table-shell">
               <table className="data-table">
                 <thead>
                   <tr>
-                    <th />
+                    <th className="table-checkbox-cell">
+                      <input
+                        ref={headerCheckboxRef}
+                        type="checkbox"
+                        checked={allFilteredSelected}
+                        onChange={toggleFilteredSelection}
+                        aria-label="Selecionar todos os contatos visíveis"
+                      />
+                    </th>
                     <th>Linha</th>
                     <th>Email</th>
                     <th>Nome</th>
                     <th>Grupos</th>
                     <th>Variáveis</th>
                     <th>Status</th>
+                    <th>Ações</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -276,7 +376,7 @@ export function ContactsTable({
                       key={contact.id}
                       className={!contact.isValid ? 'row-invalid' : contact.excluded ? 'row-muted' : ''}
                     >
-                      <td>
+                      <td className="table-checkbox-cell">
                         <input
                           type="checkbox"
                           checked={selectedIds.includes(contact.id)}
@@ -286,7 +386,19 @@ export function ContactsTable({
                       <td>{contact.rowNumber}</td>
                       <td>{contact.email}</td>
                       <td>{contact.name || '—'}</td>
-                      <td>{(contact.groups || []).map((group) => group.name).join(', ') || '—'}</td>
+                      <td>
+                        {(contact.groups || []).length ? (
+                          <div className="group-chip-list">
+                            {(contact.groups || []).map((group) => (
+                              <span key={group.id} className="group-chip">
+                                {group.name}
+                              </span>
+                            ))}
+                          </div>
+                        ) : (
+                          '—'
+                        )}
+                      </td>
                       <td>{Object.keys(contact.variables || {}).join(', ') || '—'}</td>
                       <td>
                         {!contact.isValid
@@ -294,6 +406,24 @@ export function ContactsTable({
                           : contact.excluded
                             ? 'Removido desta campanha'
                             : 'Pronto para envio'}
+                      </td>
+                      <td>
+                        <div className="row-actions">
+                          <button
+                            className="ghost-button mini-button"
+                            onClick={() =>
+                              runRowAction(() => onExcludeContacts([contact.id], !contact.excluded))
+                            }
+                          >
+                            {contact.excluded ? 'Reativar' : 'Tirar do envio'}
+                          </button>
+                          <button
+                            className="ghost-button mini-button danger-text"
+                            onClick={() => runRowAction(() => onRemoveContacts([contact.id]))}
+                          >
+                            Excluir
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   ))}
