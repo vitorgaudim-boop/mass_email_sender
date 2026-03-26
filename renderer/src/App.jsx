@@ -14,7 +14,13 @@ function buildAvailableFields(contacts) {
   const fieldSet = new Set(STATIC_TEMPLATE_FIELDS);
 
   for (const contact of contacts) {
-    Object.keys(contact.variables || {}).forEach((key) => fieldSet.add(key));
+    Object.keys(contact.variables || {}).forEach((key) => {
+      if (!key || key.startsWith('__empty')) {
+        return;
+      }
+
+      fieldSet.add(key);
+    });
   }
 
   return Array.from(fieldSet).sort((left, right) => left.localeCompare(right));
@@ -65,7 +71,7 @@ export function App() {
               <strong>O que verificar</strong>
               <p>
                 Reinstale o app usando o instalador mais recente e garanta que você abriu `Envio de
-                Email Setup 1.0.0.exe`, não a versão antiga `Envio de Cupons`.
+                Email Setup 1.0.1.exe`, não a versão antiga `Envio de Cupons`.
               </p>
             </div>
           </section>
@@ -361,8 +367,7 @@ export function App() {
             <p className="eyebrow">Rakuten Email Operations</p>
             <h1>Envio de Email</h1>
             <p className="workspace-copy">
-              Importe a base, escolha um modelo pronto, valide com teste e acompanhe o disparo em
-              tempo real.
+              Base, template, teste e disparo. Sem HTML obrigatório e sem tela desperdiçada.
             </p>
           </div>
           <div className="workspace-actions">

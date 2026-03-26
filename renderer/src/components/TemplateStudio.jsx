@@ -1,6 +1,11 @@
 import { useEffect, useState } from 'react';
 import DOMPurify from 'dompurify';
-import { BUILT_IN_TEMPLATES, createDraftFromPreset } from '../../../shared/templateCatalog.js';
+import {
+  BUILT_IN_TEMPLATES,
+  createDraftFromPreset,
+  DEFAULT_TEMPLATE_PRESET,
+  syncTemplateDraft
+} from '../../../shared/templateCatalog.js';
 
 export function TemplateStudio({
   templateDraft,
@@ -45,26 +50,47 @@ export function TemplateStudio({
     };
   }, []);
 
+  function updateDraft(nextDraft) {
+    onChangeTemplate(syncTemplateDraft(nextDraft));
+  }
+
+  function updateComposerField(key, value) {
+    updateDraft({
+      ...templateDraft,
+      composer: {
+        ...(templateDraft.composer || {}),
+        [key]: value
+      }
+    });
+  }
+
   function applyPreset(preset) {
     onChangeTemplate(createDraftFromPreset(preset));
   }
 
+  function switchToPresetMode() {
+    const fallbackPreset =
+      BUILT_IN_TEMPLATES.find((item) => item.id === templateDraft.presetId) || DEFAULT_TEMPLATE_PRESET;
+    applyPreset(fallbackPreset);
+  }
+
+  const isPresetMode = templateDraft.mode === 'local' && templateDraft.sourceType === 'preset';
+
   return (
     <section className="template-grid">
       <article className="panel template-main-panel">
-        <div className="panel-header">
+        <div className="panel-header compact-header">
           <div>
             <p className="eyebrow">2. Template</p>
-            <h3>Escolha um modelo pronto e ajuste só o necessário</h3>
-            <p className="section-copy">
-              O fluxo mais simples é este: clique em <strong>Usar modelo</strong>, revise o
-              assunto e confira o preview. O editor HTML fica escondido logo abaixo, para quando
-              você realmente precisar mexer no código.
+            <h3>Escolha o visual e escreva o texto</h3>
+            <p className="section-copy compact-copy">
+              Aqui o template é só a estrutura visual. O conteúdo é preenchido em campos simples,
+              sem precisar abrir HTML.
             </p>
           </div>
           <div className="panel-actions">
             <button className="ghost-button" onClick={onImportTemplate}>
-              Importar HTML ou EML
+              Importar HTML/EML
             </button>
             <button className="primary-button" onClick={onPreview}>
               Atualizar preview
@@ -72,32 +98,17 @@ export function TemplateStudio({
           </div>
         </div>
 
-        <div className="template-quickstart">
-          <div className="quickstart-item">
-            <strong>1. Escolha um modelo</strong>
-            <span>Todos já saem com header, logo, estrutura e rodapé prontos.</span>
-          </div>
-          <div className="quickstart-item">
-            <strong>2. Ajuste o texto</strong>
-            <span>Troque o assunto ou o conteúdo principal. Nada de começar do zero.</span>
-          </div>
-          <div className="quickstart-item">
-            <strong>3. Revise e envie</strong>
-            <span>O preview é atualizado com a sua marca e com os dados do primeiro contato.</span>
-          </div>
-        </div>
-
         <div className="template-mode-strip">
           <button
             className={templateDraft.mode === 'local' ? 'segment active' : 'segment'}
-            onClick={() => onChangeTemplate({ ...templateDraft, mode: 'local' })}
+            onClick={() => updateDraft({ ...templateDraft, mode: 'local' })}
           >
-            Modelos prontos e HTML
+            Shells do app
           </button>
           <button
             className={templateDraft.mode === 'sendgrid_dynamic' ? 'segment active' : 'segment'}
             onClick={() =>
-              onChangeTemplate({
+              updateDraft({
                 ...templateDraft,
                 mode: 'sendgrid_dynamic',
                 sourceType: 'sendgrid_dynamic'
@@ -122,120 +133,191 @@ export function TemplateStudio({
               />
             </label>
 
-            <div className="note-block">
-              <strong>Quando usar este modo</strong>
+            <div className="note-block compact-note">
+              <strong>Quando usar</strong>
               <p>
-                Use apenas se o HTML final já estiver criado dentro do SendGrid. Se você quer
-                começar por um modelo pronto do app, fique no modo anterior.
+                Use este modo só quando o HTML final já estiver hospedado no SendGrid. Se você quer
+                montar o email aqui no app, fique em <strong>Shells do app</strong>.
               </p>
             </div>
           </div>
         ) : (
           <>
-            <div className="note-block compact-note">
-              <strong>Biblioteca pronta para uso</strong>
-              <p>
-                Os modelos abaixo já vêm com estrutura Rakuten, espaçamento, logo e fechamento.
-                Você pode simplesmente escolher um deles e seguir para o teste.
-              </p>
-            </div>
-
-            <div className="template-library">
+            <div className="template-shell-grid">
               {BUILT_IN_TEMPLATES.map((preset) => (
-                <article
+                <button
                   key={preset.id}
                   className={
-                    templateDraft.presetId === preset.id ? 'template-card active' : 'template-card'
+                    templateDraft.presetId === preset.id && templateDraft.sourceType === 'preset'
+                      ? 'template-shell-card active'
+                      : 'template-shell-card'
                   }
+                  onClick={() => applyPreset(preset)}
                 >
-                  <div className="template-card-top">
-                    <span className="template-category">{preset.category}</span>
-                    {preset.isDefault ? <span className="template-badge">Padrão</span> : null}
-                  </div>
-                  <h4>{preset.name}</h4>
-                  <p>{preset.description}</p>
-                  <div className="template-tag-row">
-                    {preset.tags.map((tag) => (
-                      <span key={`${preset.id}-${tag}`} className="template-tag">
-                        {tag}
-                      </span>
-                    ))}
-                  </div>
-                  <button className="ghost-button template-use-button" onClick={() => applyPreset(preset)}>
-                    {templateDraft.presetId === preset.id ? 'Modelo em uso' : 'Usar modelo'}
-                  </button>
-                </article>
+                  <span className="template-category">{preset.category}</span>
+                  <strong>{preset.name}</strong>
+                  <small>{preset.description}</small>
+                </button>
               ))}
             </div>
 
-            <div className="template-editor-toolbar">
-              <label className="full-span">
-                <span>Assunto do template</span>
-                <input
-                  className="input-field"
-                  value={templateDraft.subject}
-                  onChange={(event) =>
-                    onChangeTemplate({ ...templateDraft, subject: event.target.value })
-                  }
-                  placeholder="Ex.: Atualização importante sobre sua operação"
-                />
-              </label>
-
-              <div className="note-block">
-                <strong>Modelo atual</strong>
-                <p>
-                  {templateDraft.fileName
-                    ? `Você está usando: ${templateDraft.fileName}.`
-                    : 'Nenhum arquivo importado. Escolha um dos modelos acima ou importe um HTML.'}
-                </p>
-              </div>
-            </div>
-
-            <details className="advanced-panel">
-              <summary>Editar HTML avançado</summary>
-              <div className="advanced-panel-body">
-                <p className="section-copy no-margin">
-                  Use este editor só se você quiser refinar o HTML manualmente. Para o fluxo normal,
-                  você pode ignorar esta parte.
-                </p>
-                <div className="editor-shell">
-                  {EditorComponent ? (
-                    <EditorComponent
-                      height="360px"
-                      defaultLanguage="html"
-                      language="html"
-                      theme="vs-light"
-                      value={templateDraft.html}
-                      onChange={(value) =>
-                        onChangeTemplate({ ...templateDraft, html: value || '' })
-                      }
-                      options={{
-                        minimap: { enabled: false },
-                        fontSize: 13,
-                        wordWrap: 'on',
-                        lineNumbersMinChars: 3
-                      }}
-                    />
-                  ) : (
-                    <textarea
-                      className="editor-fallback"
-                      value={templateDraft.html}
-                      onChange={(event) =>
-                        onChangeTemplate({ ...templateDraft, html: event.target.value })
-                      }
-                      placeholder="Cole ou edite o HTML aqui."
-                    />
-                  )}
+            {isPresetMode ? (
+              <div className="simple-composer-grid">
+                <div className="note-block compact-note full-span">
+                  <strong>O assunto fica na tela Configuração</strong>
+                  <p>
+                    Aqui você escolhe só o visual e escreve o conteúdo do email. O assunto da
+                    campanha é definido depois, junto com remetente, lote e teste.
+                  </p>
                 </div>
-                {editorLoadError ? <p className="inline-warning">{editorLoadError}</p> : null}
+
+                <label className="full-span">
+                  <span>Título do email</span>
+                  <input
+                    className="input-field"
+                    value={templateDraft.composer?.headline || ''}
+                    onChange={(event) => updateComposerField('headline', event.target.value)}
+                    placeholder="Ex.: Atualização importante para sua operação"
+                  />
+                </label>
+
+                <label className="full-span">
+                  <span>Saudação</span>
+                  <input
+                    className="input-field"
+                    value={templateDraft.composer?.greeting || ''}
+                    onChange={(event) => updateComposerField('greeting', event.target.value)}
+                    placeholder="Olá {{name}},"
+                  />
+                </label>
+
+                <label className="full-span">
+                  <span>Mensagem principal</span>
+                  <textarea
+                    className="input-field composer-textarea composer-textarea-main"
+                    value={templateDraft.composer?.body || ''}
+                    onChange={(event) => updateComposerField('body', event.target.value)}
+                    placeholder="Escreva aqui o texto principal do email."
+                  />
+                </label>
+
+                <label className="full-span">
+                  <span>Texto complementar</span>
+                  <textarea
+                    className="input-field composer-textarea"
+                    value={templateDraft.composer?.supportingText || ''}
+                    onChange={(event) => updateComposerField('supportingText', event.target.value)}
+                    placeholder="Use este espaço para contexto extra, instruções ou observações."
+                  />
+                </label>
+
+                <label className="full-span">
+                  <span>Pontos-chave</span>
+                  <textarea
+                    className="input-field composer-textarea"
+                    value={templateDraft.composer?.highlights || ''}
+                    onChange={(event) => updateComposerField('highlights', event.target.value)}
+                    placeholder={'Um item por linha\nOutro item por linha'}
+                  />
+                </label>
+
+                <label>
+                  <span>Texto do botão</span>
+                  <input
+                    className="input-field"
+                    value={templateDraft.composer?.ctaLabel || ''}
+                    onChange={(event) => updateComposerField('ctaLabel', event.target.value)}
+                    placeholder="Ex.: Ver detalhes"
+                  />
+                </label>
+
+                <label>
+                  <span>URL do botão</span>
+                  <input
+                    className="input-field"
+                    value={templateDraft.composer?.ctaUrl || ''}
+                    onChange={(event) => updateComposerField('ctaUrl', event.target.value)}
+                    placeholder="https://..."
+                  />
+                </label>
+
+                <label className="full-span">
+                  <span>Assinatura</span>
+                  <input
+                    className="input-field"
+                    value={templateDraft.composer?.signature || ''}
+                    onChange={(event) => updateComposerField('signature', event.target.value)}
+                    placeholder="Equipe {{brand_name}}"
+                  />
+                </label>
+
+                <div className="note-block compact-note full-span">
+                  <strong>Você ainda pode personalizar</strong>
+                  <p>
+                    Esses campos aceitam variáveis como <code>{'{{name}}'}</code>,{' '}
+                    <code>{'{{coupon_code}}'}</code> e <code>{'{{brand_name}}'}</code>.
+                  </p>
+                </div>
               </div>
-            </details>
+            ) : (
+              <div className="template-imported-stack">
+                <div className="note-block compact-note">
+                  <strong>HTML importado</strong>
+                  <p>
+                    Você está usando um arquivo importado. Se quiser voltar ao fluxo simples do app,
+                    clique no botão abaixo.
+                  </p>
+                </div>
+
+                <div className="panel-actions">
+                  <button className="ghost-button" onClick={switchToPresetMode}>
+                    Voltar para os shells do app
+                  </button>
+                </div>
+
+                <details className="advanced-panel">
+                  <summary>Editar HTML avançado</summary>
+                  <div className="advanced-panel-body">
+                    <div className="editor-shell">
+                      {EditorComponent ? (
+                        <EditorComponent
+                          height="360px"
+                          defaultLanguage="html"
+                          language="html"
+                          theme="vs-light"
+                          value={templateDraft.html}
+                          onChange={(value) =>
+                            onChangeTemplate({ ...templateDraft, html: value || '' })
+                          }
+                          options={{
+                            minimap: { enabled: false },
+                            fontSize: 13,
+                            wordWrap: 'on',
+                            lineNumbersMinChars: 3
+                          }}
+                        />
+                      ) : (
+                        <textarea
+                          className="editor-fallback"
+                          value={templateDraft.html}
+                          onChange={(event) =>
+                            onChangeTemplate({ ...templateDraft, html: event.target.value })
+                          }
+                          placeholder="Cole ou edite o HTML aqui."
+                        />
+                      )}
+                    </div>
+                    {editorLoadError ? <p className="inline-warning">{editorLoadError}</p> : null}
+                  </div>
+                </details>
+              </div>
+            )}
           </>
         )}
       </article>
 
       <article className="panel template-preview-panel">
-        <div className="panel-header">
+        <div className="panel-header compact-header">
           <div>
             <p className="eyebrow">Prévia</p>
             <h3>Como o email deve ficar</h3>
@@ -244,10 +326,6 @@ export function TemplateStudio({
 
         <div className="note-block compact-note">
           <strong>Variáveis prontas para uso</strong>
-          <p>
-            Você pode usar dados da planilha e da marca. O app escapa os valores automaticamente
-            para evitar injeção.
-          </p>
           <div className="pill-row">
             {availableFields.map((field) => (
               <span key={field} className="variable-pill">
@@ -281,7 +359,7 @@ export function TemplateStudio({
             <div className="preview-frame mail-preview-frame">
               <div className="preview-empty-state">
                 <strong>O preview aparece aqui</strong>
-                <p>Escolha um modelo pronto, importe um HTML ou edite o conteúdo para visualizar.</p>
+                <p>Escolha um shell, escreva o texto e revise o resultado.</p>
               </div>
             </div>
           )}

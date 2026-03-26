@@ -1,77 +1,156 @@
 const DEFAULT_CTA_URL = 'https://rakutenadvertising.com/pt-br/';
+const VARIABLE_PATTERN = /{{\s*[A-Za-z0-9_.-]+\s*}}/g;
 
-function sectionBlock(title, paragraphs = [], listItems = []) {
-  const paragraphHtml = paragraphs
-    .map(
-      (paragraph) =>
-        `<p style="margin:0 0 16px; font-size:15px; line-height:1.72; color:#2a1f34;">${paragraph}</p>`
-    )
+function escapeHtmlPreservingVariables(value) {
+  const tokens = [];
+  const source = String(value ?? '').replace(VARIABLE_PATTERN, (match) => {
+    const token = `__VARIABLE_TOKEN_${tokens.length}__`;
+    tokens.push({ token, match });
+    return token;
+  });
+
+  let escaped = source
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+
+  for (const { token, match } of tokens) {
+    escaped = escaped.replaceAll(token, match);
+  }
+
+  return escaped;
+}
+
+function normalizeLineBreaks(value) {
+  return String(value ?? '').replace(/\r\n/g, '\n').trim();
+}
+
+function renderParagraphs(value, { className = '', color = '#2b2034' } = {}) {
+  const paragraphs = normalizeLineBreaks(value)
+    .split(/\n\s*\n/g)
+    .map((entry) => entry.trim())
+    .filter(Boolean);
+
+  if (!paragraphs.length) {
+    return '';
+  }
+
+  return paragraphs
+    .map((paragraph) => {
+      const html = escapeHtmlPreservingVariables(paragraph).replace(/\n/g, '<br />');
+      return `<p class="${className}" style="margin:0 0 16px; font-size:15px; line-height:1.72; color:${color};">${html}</p>`;
+    })
     .join('');
+}
 
-  const listHtml = listItems.length
-    ? `<ul style="margin:0 0 20px 20px; padding:0; color:#2a1f34;">${listItems
+function renderHighlightList(value, color = '#2b2034') {
+  const items = normalizeLineBreaks(value)
+    .split('\n')
+    .map((entry) => entry.trim())
+    .filter(Boolean);
+
+  if (!items.length) {
+    return '';
+  }
+
+  return `
+    <ul style="margin:0 0 20px 18px; padding:0; color:${color};">
+      ${items
         .map(
           (item) =>
-            `<li style="margin:0 0 8px; font-size:15px; line-height:1.6;">${item}</li>`
+            `<li style="margin:0 0 8px; font-size:15px; line-height:1.6;">${escapeHtmlPreservingVariables(item)}</li>`
         )
-        .join('')}</ul>`
+        .join('')}
+    </ul>
+  `;
+}
+
+function renderSignature(value) {
+  return escapeHtmlPreservingVariables(value || 'Equipe {{brand_name}}').replace(/\n/g, '<br />');
+}
+
+function buildShellHtml(shell, composer) {
+  const greetingHtml = renderParagraphs(composer.greeting, {
+    className: 'greeting',
+    color: shell.textColor
+  });
+  const bodyHtml = renderParagraphs(composer.body, {
+    className: 'body-copy',
+    color: shell.textColor
+  });
+  const supportingHtml = renderParagraphs(composer.supportingText, {
+    className: 'support-copy',
+    color: shell.mutedTextColor
+  });
+  const highlightsHtml = renderHighlightList(composer.highlights, shell.textColor);
+  const ctaEnabled = composer.ctaLabel && composer.ctaUrl;
+  const ctaHtml = ctaEnabled
+    ? `
+      <section style="margin:8px 0 28px; padding:22px 24px; border-radius:22px; background:${shell.ctaBackground};">
+        <a
+          href="${escapeHtmlPreservingVariables(composer.ctaUrl)}"
+          target="_blank"
+          rel="noopener noreferrer"
+          style="display:inline-block; padding:14px 22px; border-radius:999px; background:${shell.ctaButtonBackground}; color:${shell.ctaButtonColor}; font-weight:700; text-decoration:none;"
+        >
+          ${escapeHtmlPreservingVariables(composer.ctaLabel)}
+        </a>
+      </section>
+    `
     : '';
 
-  return `
-    <section style="margin:0 0 24px;">
-      ${title ? `<h2 style="margin:0 0 14px; font-size:22px; line-height:1.25; color:#231530;">${title}</h2>` : ''}
-      ${paragraphHtml}
-      ${listHtml}
-    </section>
-  `;
-}
-
-function ctaBlock(label, url, supportText = '') {
-  return `
-    <section style="margin:8px 0 28px; padding:24px; border-radius:24px; background:linear-gradient(135deg,#8b34d0,#6d1fb0); color:#ffffff;">
-      ${supportText ? `<p style="margin:0 0 14px; font-size:14px; line-height:1.7; color:rgba(255,255,255,0.88);">${supportText}</p>` : ''}
-      <a href="${url}" target="_blank" rel="noopener noreferrer" style="display:inline-block; padding:14px 22px; border-radius:999px; background:#ffffff; color:#6d1fb0; font-weight:700; text-decoration:none;">
-        ${label}
-      </a>
-    </section>
-  `;
-}
-
-function buildEmailShell({ title, eyebrow, intro, bodyHtml, cta, closing }) {
   return `<!doctype html>
 <html lang="pt-BR">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>${title}</title>
+    <title>${escapeHtmlPreservingVariables(composer.headline || 'Novo email')}</title>
   </head>
-  <body style="margin:0; padding:0; background:#f5f0fb; font-family:Arial, Helvetica, sans-serif; color:#221833;">
-    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#f5f0fb;">
+  <body style="margin:0; padding:0; background:${shell.pageBackground}; font-family:Arial, Helvetica, sans-serif; color:${shell.textColor};">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:${shell.pageBackground};">
       <tr>
-        <td align="center" style="padding:32px 16px;">
-          <table role="presentation" width="640" cellpadding="0" cellspacing="0" border="0" style="width:100%; max-width:640px; background:#ffffff; border-radius:28px; overflow:hidden;">
+        <td align="center" style="padding:24px 14px;">
+          <table role="presentation" width="640" cellpadding="0" cellspacing="0" border="0" style="width:100%; max-width:640px; background:#ffffff; border-radius:26px; overflow:hidden; border:1px solid ${shell.frameLine};">
             <tr>
-              <td align="center" style="padding:30px 36px 24px; background:linear-gradient(180deg,#f6ebff 0%, #ffffff 100%); border-bottom:1px solid #efe2fb;">
-                <img
-                  src="{{brand_logo_url}}"
-                  alt="{{brand_name}}"
-                  width="240"
-                  style="display:block; width:100%; max-width:240px; height:auto; border:0;"
-                />
-                <p style="margin:20px 0 10px; font-size:12px; line-height:1.4; letter-spacing:0.18em; text-transform:uppercase; color:#7d61a1;">
-                  ${eyebrow}
-                </p>
-                <h1 style="margin:0; font-size:30px; line-height:1.12; color:#21142d;">${title}</h1>
-                ${intro ? `<p style="margin:16px 0 0; font-size:15px; line-height:1.7; color:#5c4b6b;">${intro}</p>` : ''}
+              <td style="padding:0; background:${shell.headerBackground};">
+                <div style="padding:28px 34px 24px;">
+                  <div style="display:inline-flex; align-items:center; padding:8px 12px; border-radius:999px; background:${shell.labelBackground}; color:${shell.labelColor}; font-size:11px; letter-spacing:0.16em; text-transform:uppercase; font-weight:700;">
+                    ${shell.label}
+                  </div>
+                  <img
+                    src="{{brand_logo_url}}"
+                    alt="{{brand_name}}"
+                    width="220"
+                    style="display:block; width:100%; max-width:220px; height:auto; border:0; margin:18px 0 0;"
+                  />
+                  <h1 style="margin:20px 0 0; font-size:30px; line-height:1.15; color:${shell.titleColor};">
+                    ${escapeHtmlPreservingVariables(composer.headline || 'Seu título aqui')}
+                  </h1>
+                </div>
               </td>
             </tr>
             <tr>
-              <td style="padding:32px 36px 20px;">
+              <td style="padding:30px 34px 18px;">
+                ${greetingHtml}
                 ${bodyHtml}
-                ${cta ? ctaBlock(cta.label, cta.url, cta.supportText) : ''}
-                <div style="margin-top:8px; padding-top:18px; border-top:1px solid #eadcf8;">
-                  <p style="margin:0; font-size:15px; line-height:1.7; color:#2d2340;">${closing}</p>
+                ${supportingHtml}
+                ${highlightsHtml}
+                ${ctaHtml}
+                <div style="margin-top:10px; padding-top:18px; border-top:1px solid ${shell.frameLine};">
+                  <p style="margin:0; font-size:15px; line-height:1.7; color:${shell.textColor};">
+                    Atenciosamente,<br />
+                    <strong>${renderSignature(composer.signature)}</strong>
+                  </p>
                 </div>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding:16px 34px 22px; background:${shell.footerBackground}; color:${shell.footerColor};">
+                <p style="margin:0; font-size:12px; line-height:1.6;">
+                  ${shell.footerNote}
+                </p>
               </td>
             </tr>
           </table>
@@ -82,229 +161,196 @@ function buildEmailShell({ title, eyebrow, intro, bodyHtml, cta, closing }) {
 </html>`;
 }
 
-function buildInvoiceTemplate() {
-  const bodyHtml = `
-    ${sectionBlock('', [
-      '<em style="font-size:12px; color:#7a6d77;">*english follows portuguese*</em>'
-    ])}
-    ${sectionBlock('Português', [
-      'Prezado Afiliado,',
-      '<strong>Observação:</strong> esta informação é válida somente para recebimento dos valores referentes à Brazil Network.',
-      'Para reforçar nossos controles internos e atender às exigências de auditoria e às novas regras relacionadas à Reforma Tributária, implementamos recentemente um novo processo de validação das notas fiscais recebidas.',
-      'Durante essa conferência, identificamos que algumas notas estão sendo emitidas com dados incorretos ou incompletos da Rakuten Marketing Brasil Ltda, como cidade, endereço ou outras informações cadastrais.',
-      'Por isso, pedimos atenção redobrada: é muito importante que todos os dados do tomador do serviço estejam exatamente corretos no momento da emissão da nota fiscal. Caso seja identificada qualquer divergência, a nota fiscal não poderá seguir para aprovação e pagamento.'
-    ], [
-      '<strong>Razão Social:</strong> Rakuten Marketing Brasil Ltda',
-      '<strong>CNPJ:</strong> 18.355.228/0001-60',
-      '<strong>Endereço:</strong> Avenida Domingos Odalia Filho, 301',
-      '<strong>Complemento:</strong> Andar 7 - Sala 7W103 - Edifício The Cittyplex',
-      '<strong>Bairro:</strong> Centro',
-      '<strong>Cidade:</strong> Osasco - SP',
-      '<strong>CEP:</strong> 06010-067'
-    ])}
-    ${sectionBlock('', [
-      'Antes de emitir a nota fiscal, pedimos por gentileza que todos os campos sejam conferidos para garantir total aderência aos dados acima.',
-      'Essa verificação é essencial para que possamos seguir com a validação fiscal e realizar os pagamentos dentro do prazo.'
-    ])}
-    ${sectionBlock('English', [
-      'Dear Affiliate,',
-      '<strong>Note:</strong> this information is valid only for receipt of amounts related to Brazil Network.',
-      'To strengthen our internal controls and comply with audit requirements and the new rules related to the Tax Reform, we have recently implemented a new process for validating received invoices.',
-      'During this review, we identified that some invoices are being issued with incorrect or incomplete details for Rakuten Marketing Brasil Ltda, such as city, address or other registration information.',
-      'Therefore, we ask everyone to pay attention: all payer details must be exactly correct when issuing the invoice. If any discrepancy is identified, the invoice cannot proceed for approval and payment and must be reissued with the correct information.'
-    ], [
-      '<strong>Company Name:</strong> Rakuten Marketing Brasil Ltda',
-      '<strong>CNPJ:</strong> 18.355.228/0001-60',
-      '<strong>Address:</strong> Avenida Domingos Odalia Filho, 301',
-      '<strong>Complement:</strong> 7th floor - Room 7W103 - The Cittyplex Building',
-      '<strong>Neighborhood:</strong> Centro',
-      '<strong>City:</strong> Osasco - SP',
-      '<strong>ZIP Code:</strong> 06010-067'
-    ])}
-    ${sectionBlock('', [
-      'Please check all fields before issuing the invoice, ensuring that the information exactly matches the data above.',
-      'This verification is essential for us to proceed with tax validation and process payments on time.'
-    ])}
-  `;
-
-  return buildEmailShell({
-    title: 'Atualização de dados para emissão de Nota Fiscal',
-    eyebrow: 'Comunicado fiscal',
-    intro: 'Modelo pronto para comunicados formais e bilíngues. O layout já vem completo; você só ajusta o texto, se quiser.',
-    bodyHtml,
-    closing: 'Atenciosamente / Sincerely,<br /><strong>Equipe {{brand_name}}</strong>'
-  });
-}
-
-function buildPromotionalTemplate() {
-  return buildEmailShell({
-    title: 'Seu próximo clique pode render mais valor',
-    eyebrow: 'Oferta especial',
-    intro: 'Modelo ideal para campanhas de incentivo, cupom ou ativação. Troque o texto principal e dispare.',
-    bodyHtml: `
-      ${sectionBlock('', [
-        'Olá {{name}},',
-        'Preparamos uma comunicação pronta para uso. Você pode explicar a oferta em uma frase curta, destacar o benefício principal e manter o email limpo.',
-        'Se quiser personalizar, use variáveis da planilha como <strong>{{name}}</strong>, <strong>{{coupon_code}}</strong>, <strong>{{city}}</strong> ou qualquer outra coluna importada.'
-      ])}
-      ${sectionBlock('Destaques da campanha', [], [
-        '<strong>Benefício:</strong> desconto, cashback, frete grátis ou benefício exclusivo',
-        '<strong>Código:</strong> {{coupon_code}}',
-        '<strong>Prazo:</strong> 31/12/2026',
-        '<strong>Observação:</strong> ajuste este bloco para a oferta atual'
-      ])}
-    `,
-    cta: {
-      label: 'Aproveitar agora',
-      url: DEFAULT_CTA_URL,
-      supportText: 'Use este botão para levar o destinatário direto para a landing page da campanha.'
-    },
-    closing: 'Boa campanha,<br /><strong>Equipe {{brand_name}}</strong>'
-  });
-}
-
-function buildWelcomeTemplate() {
-  return buildEmailShell({
-    title: 'Bem-vindo à operação {{brand_name}}',
-    eyebrow: 'Boas-vindas',
-    intro: 'Template simples para onboarding, ativação de parceiro ou primeiro contato com um cliente.',
-    bodyHtml: `
-      ${sectionBlock('', [
-        'Olá {{name}},',
-        'É um prazer ter você conosco. Este modelo foi pensado para dar contexto, explicar próximos passos e manter uma primeira impressão forte.',
-        'Use os blocos abaixo para mostrar o que acontece agora, quem será o ponto de contato e onde o destinatário encontra o material principal.'
-      ])}
-      ${sectionBlock('Próximos passos', [], [
-        'Explique em uma frase o objetivo da parceria ou do programa',
-        'Liste a primeira ação esperada',
-        'Indique um canal claro para dúvidas'
-      ])}
-    `,
-    cta: {
-      label: 'Ver próximos passos',
-      url: DEFAULT_CTA_URL,
-      supportText: 'Se houver um portal, página inicial ou documento guia, use este CTA.'
-    },
-    closing: 'Conte com a gente,<br /><strong>Equipe {{brand_name}}</strong>'
-  });
-}
-
-function buildReminderTemplate() {
-  return buildEmailShell({
-    title: 'Ainda precisamos de uma ação sua',
-    eyebrow: 'Lembrete',
-    intro: 'Use este modelo para cobrança gentil, atualização cadastral, documentação pendente ou follow-up.',
-    bodyHtml: `
-      ${sectionBlock('', [
-        'Olá {{name}},',
-        'Estamos entrando em contato para lembrar que ainda existe uma pendência em aberto. Ajuste o texto abaixo com a ação esperada, o prazo e o impacto em caso de não conclusão.',
-        'A ideia é manter o email curto, claro e objetivo.'
-      ])}
-      ${sectionBlock('Checklist sugerido', [], [
-        'O que precisa ser enviado, aprovado ou confirmado',
-        'Prazo final: dd/mm/aaaa',
-        'Canal de retorno ou responsável interno'
-      ])}
-    `,
-    cta: {
-      label: 'Concluir agora',
-      url: DEFAULT_CTA_URL,
-      supportText: 'O botão pode apontar para formulário, portal, pasta compartilhada ou página de suporte.'
-    },
-    closing: 'Obrigado pela atenção,<br /><strong>Equipe {{brand_name}}</strong>'
-  });
-}
-
-function buildOperationalTemplate() {
-  return buildEmailShell({
-    title: 'O que mudou no processo e o que você precisa saber',
-    eyebrow: 'Atualização operacional',
-    intro: 'Modelo pensado para mudanças de fluxo, calendário, SLA, cadastro ou aviso interno.',
-    bodyHtml: `
-      ${sectionBlock('', [
-        'Olá {{name}},',
-        'Estamos compartilhando uma atualização operacional importante. Este modelo foi desenhado para explicar mudança de processo sem excesso de texto.',
-        'Mantenha o email em três blocos: o que mudou, quando passa a valer e o que a pessoa precisa fazer agora.'
-      ])}
-      ${sectionBlock('Resumo executivo', [], [
-        'Descreva a mudança principal em uma frase',
-        'Explique quando ela entra em vigor',
-        'Deixe claro quem é impactado'
-      ])}
-      ${sectionBlock('Próxima ação', [
-        'Se houver uma ação imediata, detalhe aqui em linguagem objetiva. Se não houver ação, use este espaço para reforçar o canal de suporte.'
-      ])}
-    `,
-    closing: 'Seguimos à disposição,<br /><strong>Equipe {{brand_name}}</strong>'
-  });
+function createDefaultComposer(template) {
+  return {
+    headline: template.defaultHeadline || 'Seu título aqui',
+    greeting: 'Olá {{name}},',
+    body: 'Escreva aqui a mensagem principal do email.',
+    supportingText:
+      'Use este segundo bloco para complementar o contexto, incluir observações ou reforçar instruções.',
+    highlights: '',
+    ctaLabel: '',
+    ctaUrl: DEFAULT_CTA_URL,
+    signature: 'Equipe {{brand_name}}'
+  };
 }
 
 export const BUILT_IN_TEMPLATES = [
   {
-    id: 'nota_fiscal_bilingue',
-    name: 'Comunicado fiscal bilíngue',
-    category: 'Financeiro',
-    description: 'Base pronta para comunicados formais em português e inglês, no estilo do template enviado.',
-    tags: ['PT/EN', 'formal', 'sem CTA'],
+    id: 'rakuten_header_clean',
+    name: 'Header limpo',
+    category: 'Clássico',
+    description: 'Topo limpo com logo em destaque e corpo neutro.',
+    tags: ['simples', 'institucional'],
     isDefault: true,
-    subject: 'Atualização de dados para emissão de Nota Fiscal',
-    html: buildInvoiceTemplate()
+    label: 'Comunicado',
+    defaultHeadline: 'Seu comunicado começa aqui',
+    pageBackground: '#f5f0fb',
+    headerBackground: 'linear-gradient(180deg,#f5ecff 0%, #ffffff 100%)',
+    labelBackground: 'rgba(133, 41, 205, 0.12)',
+    labelColor: '#772bb8',
+    titleColor: '#251a31',
+    textColor: '#2b2034',
+    mutedTextColor: '#6f617b',
+    frameLine: '#eadcf8',
+    ctaBackground: 'linear-gradient(135deg,#f0e0ff,#f7efff)',
+    ctaButtonBackground: '#7c28c3',
+    ctaButtonColor: '#ffffff',
+    footerBackground: '#faf5ff',
+    footerColor: '#6c5d79',
+    footerNote:
+      'Envio realizado por {{brand_name}}. O link de unsubscribe aparecerá automaticamente no rodapé do email quando habilitado na configuração.'
   },
   {
-    id: 'cupom_promocional',
-    name: 'Oferta com cupom',
+    id: 'rakuten_header_band',
+    name: 'Faixa roxa',
+    category: 'Impacto',
+    description: 'Faixa superior mais marcante, boa para campanhas e avisos fortes.',
+    tags: ['destaque', 'cta'],
+    label: 'Campanha',
+    defaultHeadline: 'Destaque sua mensagem principal',
+    pageBackground: '#f4effb',
+    headerBackground: 'linear-gradient(135deg,#7f27c6 0%, #9d46e2 100%)',
+    labelBackground: 'rgba(255,255,255,0.16)',
+    labelColor: '#ffffff',
+    titleColor: '#ffffff',
+    textColor: '#2b2034',
+    mutedTextColor: '#665875',
+    frameLine: '#e6daf6',
+    ctaBackground: 'linear-gradient(135deg,#7f27c6,#9d46e2)',
+    ctaButtonBackground: '#ffffff',
+    ctaButtonColor: '#7022b2',
+    footerBackground: '#f8f2ff',
+    footerColor: '#6c5d79',
+    footerNote:
+      'Use este shell quando você quiser um topo mais forte sem escrever HTML. O unsubscribe continua sendo controlado pela configuração do SendGrid.'
+  },
+  {
+    id: 'rakuten_notice_frame',
+    name: 'Quadro informativo',
+    category: 'Aviso',
+    description: 'Visual mais sóbrio para instruções, prazos e comunicação operacional.',
+    tags: ['aviso', 'prazo'],
+    label: 'Aviso',
+    defaultHeadline: 'Explique a atualização com clareza',
+    pageBackground: '#f7f3fb',
+    headerBackground: '#ffffff',
+    labelBackground: '#f0e3ff',
+    labelColor: '#6d25ae',
+    titleColor: '#221632',
+    textColor: '#2d2340',
+    mutedTextColor: '#64586f',
+    frameLine: '#d9c7f3',
+    ctaBackground: '#f3e7ff',
+    ctaButtonBackground: '#7427b6',
+    ctaButtonColor: '#ffffff',
+    footerBackground: '#f7f1ff',
+    footerColor: '#695a79',
+    footerNote:
+      'Este modelo funciona bem para mudanças de processo, cobrança gentil, documentos pendentes e comunicados internos.'
+  },
+  {
+    id: 'rakuten_minimal_compact',
+    name: 'Compacto',
+    category: 'Desktop',
+    description: 'Mais enxuto, com menos blocos visuais e leitura direta.',
+    tags: ['compacto', 'rápido'],
+    label: 'Atualização',
+    defaultHeadline: 'Seu email direto ao ponto',
+    pageBackground: '#f7f4fb',
+    headerBackground: '#ffffff',
+    labelBackground: '#f3eff8',
+    labelColor: '#7c28c3',
+    titleColor: '#221632',
+    textColor: '#2a1f34',
+    mutedTextColor: '#63576f',
+    frameLine: '#ece1f8',
+    ctaBackground: '#f5effc',
+    ctaButtonBackground: '#7c28c3',
+    ctaButtonColor: '#ffffff',
+    footerBackground: '#ffffff',
+    footerColor: '#766783',
+    footerNote:
+      'Ideal para mensagens curtas. Se você não precisar de CTA, deixe os campos do botão em branco e o bloco não será exibido.'
+  },
+  {
+    id: 'rakuten_footer_cta',
+    name: 'CTA no rodapé',
     category: 'Promoção',
-    description: 'Modelo para campanha promocional com benefício, código e botão de ação.',
-    tags: ['cupom', 'CTA', 'promo'],
-    subject: '{{name}}, seu benefício especial chegou',
-    html: buildPromotionalTemplate()
-  },
-  {
-    id: 'boas_vindas',
-    name: 'Boas-vindas',
-    category: 'Relacionamento',
-    description: 'Ideal para onboarding, ativação de parceiro ou primeiro contato mais institucional.',
-    tags: ['welcome', 'onboarding', 'parceria'],
-    subject: 'Bem-vindo à {{brand_name}}, {{name}}',
-    html: buildWelcomeTemplate()
-  },
-  {
-    id: 'lembrete_acao',
-    name: 'Lembrete com ação',
-    category: 'Operação',
-    description: 'Bom para cobrança gentil, pendência, atualização de cadastro ou follow-up.',
-    tags: ['lembrete', 'follow-up', 'prazo'],
-    subject: 'Lembrete: precisamos da sua ação até dd/mm/aaaa',
-    html: buildReminderTemplate()
-  },
-  {
-    id: 'comunicado_operacional',
-    name: 'Comunicado operacional',
-    category: 'Operação',
-    description: 'Use para mudança de processo, calendário, SLA ou alinhamento com parceiros.',
-    tags: ['processo', 'informativo', 'operação'],
-    subject: 'Atualização operacional da {{brand_name}}',
-    html: buildOperationalTemplate()
+    description: 'Shell pensado para calls-to-action com fechamento mais forte.',
+    tags: ['promo', 'cta'],
+    label: 'Ação',
+    defaultHeadline: 'Convide o destinatário a agir',
+    pageBackground: '#f5effb',
+    headerBackground: 'linear-gradient(180deg,#ffffff 0%, #f6ecff 100%)',
+    labelBackground: '#f2e2ff',
+    labelColor: '#7022b2',
+    titleColor: '#221632',
+    textColor: '#2d2340',
+    mutedTextColor: '#665875',
+    frameLine: '#e4d5f5',
+    ctaBackground: 'linear-gradient(135deg,#7c28c3,#9d46e2)',
+    ctaButtonBackground: '#ffffff',
+    ctaButtonColor: '#7022b2',
+    footerBackground: '#f2e4ff',
+    footerColor: '#5f5170',
+    footerNote:
+      'Use este shell quando a chamada para ação for a parte principal da mensagem.'
   }
 ];
 
 export const DEFAULT_TEMPLATE_PRESET =
   BUILT_IN_TEMPLATES.find((template) => template.isDefault) || BUILT_IN_TEMPLATES[0];
 
+export function getPresetById(templateId) {
+  return BUILT_IN_TEMPLATES.find((template) => template.id === templateId) || null;
+}
+
 export function createDraftFromPreset(template) {
+  const composer = createDefaultComposer(template);
+
   return {
     mode: 'local',
     sourceType: 'preset',
     fileName: template.name,
-    html: template.html,
+    html: buildShellHtml(template, composer),
     text: '',
-    subject: template.subject,
+    subject: '',
     templateId: '',
     variables: [],
-    presetId: template.id
+    presetId: template.id,
+    composer
   };
 }
 
-export function getPresetById(templateId) {
-  return BUILT_IN_TEMPLATES.find((template) => template.id === templateId) || null;
+export function syncTemplateDraft(templateDraft) {
+  const baseDraft = {
+    ...createDraftFromPreset(DEFAULT_TEMPLATE_PRESET),
+    ...templateDraft
+  };
+
+  if (baseDraft.mode !== 'local') {
+    return baseDraft;
+  }
+
+  if (baseDraft.sourceType !== 'preset') {
+    return {
+      ...baseDraft,
+      composer: baseDraft.composer || createDefaultComposer(DEFAULT_TEMPLATE_PRESET)
+    };
+  }
+
+  const preset = getPresetById(baseDraft.presetId) || DEFAULT_TEMPLATE_PRESET;
+  const composer = {
+    ...createDefaultComposer(preset),
+    ...(baseDraft.composer || {})
+  };
+
+  return {
+    ...baseDraft,
+    sourceType: 'preset',
+    fileName: preset.name,
+    composer,
+    html: buildShellHtml(preset, composer)
+  };
 }

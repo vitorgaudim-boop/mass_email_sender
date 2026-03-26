@@ -12,7 +12,12 @@ import {
 import { extractTemplateVariables } from './templateEngine.js';
 
 function normalizeHeaderName(header) {
-  return sanitizeText(header, { maxLength: 100 }).toLowerCase();
+  const normalized = sanitizeText(header, { maxLength: 100 }).toLowerCase();
+  if (!normalized || normalized.startsWith('__empty')) {
+    return '';
+  }
+
+  return normalized;
 }
 
 function parseEml(content) {
@@ -46,7 +51,12 @@ export async function parseContactsWorkbook(filePath) {
     const normalizedRow = {};
 
     for (const [key, value] of Object.entries(rawRow)) {
-      normalizedRow[normalizeHeaderName(key)] = value;
+      const normalizedKey = normalizeHeaderName(key);
+      if (!normalizedKey) {
+        continue;
+      }
+
+      normalizedRow[normalizedKey] = value;
     }
 
     const email = normalizeEmail(normalizedRow.email);

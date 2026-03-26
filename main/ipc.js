@@ -2,6 +2,7 @@ import path from 'node:path';
 import fs from 'node:fs/promises';
 import { dialog, ipcMain } from 'electron';
 import { DEFAULT_SEND_CONFIG, DEFAULT_TEMPLATE_DRAFT } from '../shared/constants.js';
+import { syncTemplateDraft } from '../shared/templateCatalog.js';
 import { parseContactsWorkbook, parseTemplateFile } from './services/fileParser.js';
 import { extractTemplateVariables, renderLocalTemplate } from './services/templateEngine.js';
 import { parseRecipientList, sanitizeText } from './services/validation.js';
@@ -10,10 +11,10 @@ import { exportCampaignResultsCsv } from './services/reportService.js';
 function buildBootstrap(database) {
   return {
     contacts: database.listTempContacts(),
-    templateDraft: {
+    templateDraft: syncTemplateDraft({
       ...DEFAULT_TEMPLATE_DRAFT,
       ...(database.getTemplateDraft() || {})
-    },
+    }),
     configDraft: {
       ...DEFAULT_SEND_CONFIG,
       ...(database.getConfigDraft() || {})
@@ -103,14 +104,14 @@ export function registerIpcHandlers({ database, queueManager }) {
   });
 
   ipcMain.handle('template:save', async (_event, template) => {
-    const nextTemplate = {
+    const nextTemplate = syncTemplateDraft({
       ...DEFAULT_TEMPLATE_DRAFT,
-      ...template,
-      variables:
-        template.mode === 'sendgrid_dynamic'
-          ? template.variables || []
-          : extractTemplateVariables(template.subject, template.html, template.text)
-    };
+      ...template
+    });
+    nextTemplate.variables =
+      nextTemplate.mode === 'sendgrid_dynamic'
+        ? nextTemplate.variables || []
+        : extractTemplateVariables(nextTemplate.subject, nextTemplate.html, nextTemplate.text);
 
     database.saveTemplateDraft(nextTemplate);
     return nextTemplate;
