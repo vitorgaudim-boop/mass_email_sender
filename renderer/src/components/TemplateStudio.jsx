@@ -1,5 +1,5 @@
+import { useEffect, useState } from 'react';
 import DOMPurify from 'dompurify';
-import Editor from '@monaco-editor/react';
 
 export function TemplateStudio({
   templateDraft,
@@ -9,7 +9,36 @@ export function TemplateStudio({
   preview,
   onImportTemplate
 }) {
+  const [EditorComponent, setEditorComponent] = useState(null);
+  const [editorLoadError, setEditorLoadError] = useState('');
   const sanitizedPreview = preview?.html ? DOMPurify.sanitize(preview.html) : '';
+
+  useEffect(() => {
+    let active = true;
+
+    import('@monaco-editor/react')
+      .then((module) => {
+        if (!active) {
+          return;
+        }
+
+        setEditorComponent(() => module.default);
+      })
+      .catch((error) => {
+        if (!active) {
+          return;
+        }
+
+        console.error('Monaco failed to load:', error);
+        setEditorLoadError(
+          'O editor avancado nao carregou nesta instalacao. O app mudou automaticamente para o editor simples.'
+        );
+      });
+
+    return () => {
+      active = false;
+    };
+  }, []);
 
   return (
     <section className="template-grid">
@@ -83,20 +112,30 @@ export function TemplateStudio({
               </label>
             </div>
             <div className="editor-shell">
-              <Editor
-                height="420px"
-                defaultLanguage="html"
-                language="html"
-                theme="vs-light"
-                value={templateDraft.html}
-                onChange={(value) => onChangeTemplate({ ...templateDraft, html: value || '' })}
-                options={{
-                  minimap: { enabled: false },
-                  fontSize: 14,
-                  wordWrap: 'on'
-                }}
-              />
+              {EditorComponent ? (
+                <EditorComponent
+                  height="420px"
+                  defaultLanguage="html"
+                  language="html"
+                  theme="vs-light"
+                  value={templateDraft.html}
+                  onChange={(value) => onChangeTemplate({ ...templateDraft, html: value || '' })}
+                  options={{
+                    minimap: { enabled: false },
+                    fontSize: 14,
+                    wordWrap: 'on'
+                  }}
+                />
+              ) : (
+                <textarea
+                  className="editor-fallback"
+                  value={templateDraft.html}
+                  onChange={(event) => onChangeTemplate({ ...templateDraft, html: event.target.value })}
+                  placeholder="Cole ou edite o HTML aqui."
+                />
+              )}
             </div>
+            {editorLoadError ? <p className="inline-warning">{editorLoadError}</p> : null}
           </>
         )}
       </article>
