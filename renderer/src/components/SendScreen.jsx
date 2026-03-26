@@ -13,6 +13,19 @@ export function SendScreen({
   onSendTest,
   onStartCampaign
 }) {
+  function updateConfig(patch) {
+    const nextConfig = {
+      ...configDraft,
+      ...patch
+    };
+
+    if (nextConfig.sendMode === 'shared_bcc') {
+      nextConfig.enablePersonalization = false;
+    }
+
+    onChangeConfig(nextConfig);
+  }
+
   const selectedGroups = contactGroups.filter((group) =>
     (configDraft.selectedGroupIds || []).includes(group.id)
   );
@@ -45,14 +58,20 @@ export function SendScreen({
             <input
               className="input-field"
               value={configDraft.subject}
-              onChange={(event) =>
-                onChangeConfig({
-                  ...configDraft,
-                  subject: event.target.value
-                })
-              }
+              onChange={(event) => updateConfig({ subject: event.target.value })}
               placeholder="Ex.: Atualização importante sobre sua operação"
             />
+          </article>
+          <article className="metric-card">
+            <span>Modo de envio</span>
+            <select
+              className="input-field"
+              value={configDraft.sendMode}
+              onChange={(event) => updateConfig({ sendMode: event.target.value })}
+            >
+              <option value="individual">Um email por contato</option>
+              <option value="shared_bcc">Lote com BCC compartilhado</option>
+            </select>
           </article>
           <article className="metric-card">
             <span>Contatos elegíveis</span>
@@ -91,6 +110,15 @@ export function SendScreen({
               {selectedGroups.length
                 ? selectedGroups.map((group) => group.name).join(', ')
                 : 'Todos os contatos válidos e ativos da base atual.'}
+            </p>
+          </div>
+
+          <div className="note-block compact-note">
+            <strong>Modo atual</strong>
+            <p>
+              {configDraft.sendMode === 'shared_bcc'
+                ? 'BCC compartilhado ativo. A personalização individual é desligada automaticamente.'
+                : 'Envio individual por contato ativo.'}
             </p>
           </div>
 

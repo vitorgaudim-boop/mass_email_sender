@@ -8,6 +8,23 @@ import { extractTemplateVariables, renderLocalTemplate } from './services/templa
 import { parseRecipientList, sanitizeText } from './services/validation.js';
 import { exportCampaignResultsCsv } from './services/reportService.js';
 
+function normalizeConfigPayload(config = {}) {
+  const nextConfig = {
+    ...DEFAULT_SEND_CONFIG,
+    ...config
+  };
+
+  if (nextConfig.sendMode !== 'shared_bcc' && nextConfig.sendMode !== 'individual') {
+    nextConfig.sendMode = DEFAULT_SEND_CONFIG.sendMode;
+  }
+
+  if (nextConfig.sendMode === 'shared_bcc') {
+    nextConfig.enablePersonalization = false;
+  }
+
+  return nextConfig;
+}
+
 function buildBootstrap(database) {
   return {
     contacts: database.listTempContacts(),
@@ -16,10 +33,7 @@ function buildBootstrap(database) {
       ...DEFAULT_TEMPLATE_DRAFT,
       ...(database.getTemplateDraft() || {})
     }),
-    configDraft: {
-      ...DEFAULT_SEND_CONFIG,
-      ...(database.getConfigDraft() || {})
-    },
+    configDraft: normalizeConfigPayload(database.getConfigDraft() || {}),
     history: database.listCampaignHistory()
   };
 }
@@ -160,26 +174,25 @@ export function registerIpcHandlers({ database, queueManager }) {
   });
 
   ipcMain.handle('template:preview', async (_event, { template, config }) => {
-    const eligibleContacts = getEligibleContactsForConfig(database, config);
+    const normalizedConfig = normalizeConfigPayload(config);
+    const eligibleContacts = getEligibleContactsForConfig(database, normalizedConfig);
     const sampleContact = eligibleContacts[0] || {
-      email: config.senderEmail || 'preview@example.com',
+      email: normalizedConfig.senderEmail || 'preview@example.com',
       name: 'Contato Exemplo',
       variables: {}
     };
 
-    return toUiPreview(template, config, sampleContact);
+    return toUiPreview(template, normalizedConfig, sampleContact);
   });
 
   ipcMain.handle('config:save', async (_event, config) => {
-    const nextConfig = {
-      ...DEFAULT_SEND_CONFIG,
-      ...config
-    };
+    const nextConfig = normalizeConfigPayload(config);
     database.saveConfigDraft(nextConfig);
     return nextConfig;
   });
 
   ipcMain.handle('campaign:send-test', async (_event, { config, template, recipientsText }) => {
+    const normalizedConfig = normalizeConfigPayload(config);
     const { recipients, errors } = parseRecipientList(recipientsText);
     if (!recipients.length) {
       throw new Error('Informe pelo menos um email de teste valido.');
@@ -189,15 +202,15 @@ export function registerIpcHandlers({ database, queueManager }) {
       throw new Error(`Emails de teste invalidos: ${errors.join(', ')}`);
     }
 
-    const eligibleContacts = getEligibleContactsForConfig(database, config);
+    const eligibleContacts = getEligibleContactsForConfig(database, normalizedConfig);
     const sampleContact = eligibleContacts[0] || {
-      email: config.senderEmail,
+      email: normalizedConfig.senderEmail,
       name: 'Contato Teste',
       variables: {}
     };
-    const preview = toUiPreview(template, config, sampleContact);
+    const preview = toUiPreview(template, normalizedConfig, sampleContact);
     const results = await queueManager.sendTest({
-      config,
+      config: normalizedConfig,
       template,
       testRecipients: recipients,
       sampleContact
@@ -211,16 +224,17 @@ export function registerIpcHandlers({ database, queueManager }) {
   });
 
   ipcMain.handle('campaign:start', async (_event, { config, template }) => {
-    const contacts = getEligibleContactsForConfig(database, config);
+    const normalizedConfig = normalizeConfigPayload(config);
+    const contacts = getEligibleContactsForConfig(database, normalizedConfig);
     if (queueManager.getCurrentCampaign()) {
       throw new Error('Ja existe uma campanha em andamento.');
     }
 
-    queueManager.emailService.validateConfig(config, template, contacts);
-    database.saveConfigDraft(config);
+    queueManager.emailService.validateConfig(normalizedConfig, template, contacts);
+    database.saveConfigDraft(normalizedConfig);
     database.saveTemplateDraft(template);
 
-    queueManager.startCampaign({ config, template, contacts }).catch((error) => {
+    queueManager.startCampaign({ config: normalizedConfig, template, contacts }).catch((error) => {
       queueManager.emit('error', {
         message: error.message,
         createdAt: new Date().toISOString()

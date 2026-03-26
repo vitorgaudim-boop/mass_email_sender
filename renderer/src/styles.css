@@ -1213,6 +1213,18 @@ textarea.input-field {
   align-items: start;
 }
 
+.config-panel {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  overflow: hidden;
+}
+
+.config-scroll-area {
+  min-height: 0;
+  overflow: auto;
+  padding-right: 4px;
+}
+
 .config-sections {
   display: grid;
   gap: 18px;
