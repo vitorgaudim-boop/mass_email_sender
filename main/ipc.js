@@ -7,6 +7,7 @@ import { parseContactsWorkbook, parseTemplateFile } from './services/fileParser.
 import { extractTemplateVariables, renderLocalTemplate } from './services/templateEngine.js';
 import { parseRecipientList, sanitizeText } from './services/validation.js';
 import { exportCampaignResultsCsv } from './services/reportService.js';
+import { buildSubscriptionTrackingContent } from './services/emailService.js';
 
 function normalizeConfigPayload(config = {}) {
   const nextConfig = {
@@ -39,15 +40,12 @@ function buildBootstrap(database) {
 }
 
 function appendPreviewUnsubscribe(html, config) {
-  if (!config.enableSubscriptionTracking || !config.subscriptionTrackingHtml) {
+  if (!config.enableSubscriptionTracking) {
     return html;
   }
 
-  const unsubscribeHtml = `
-    <div data-preview-unsubscribe="true">
-      ${config.subscriptionTrackingHtml}
-    </div>
-  `;
+  const trackingContent = buildSubscriptionTrackingContent(config, { preview: true });
+  const unsubscribeHtml = `<div data-preview-unsubscribe="true">${trackingContent.html}</div>`;
 
   if (html.includes('</body>')) {
     return html.replace('</body>', `${unsubscribeHtml}</body>`);

@@ -120,7 +120,16 @@ export class QueueManager extends EventEmitter {
   }
 
   async sendTest({ config, template, testRecipients, sampleContact }) {
-    this.emailService.validateConfig(config, template, [{ email: sampleContact.email || config.senderEmail }]);
+    const testConfig = {
+      ...config,
+      sendMode: 'individual',
+      enablePersonalization:
+        config.sendMode === 'shared_bcc' ? false : config.enablePersonalization
+    };
+
+    this.emailService.validateConfig(testConfig, template, [
+      { email: sampleContact.email || testConfig.senderEmail }
+    ]);
     const syntheticContacts = testRecipients.map((recipient, index) => ({
       id: `test-${index + 1}`,
       email: recipient.email,
@@ -137,18 +146,14 @@ export class QueueManager extends EventEmitter {
     const requestUnits = this.emailService.buildBatchRequests({
       contacts: syntheticContacts,
       template: templateForSend,
-      config: {
-        ...config,
-        sendMode: 'individual',
-        enablePersonalization: config.enablePersonalization
-      },
+      config: testConfig,
       campaignId: 'test-mode',
       batchIndex: 1
     });
     const results = [];
 
     for (const requestUnit of requestUnits) {
-      const outcome = await this.emailService.sendWithRetry(requestUnit, config);
+      const outcome = await this.emailService.sendWithRetry(requestUnit, testConfig);
       for (const contact of requestUnit.contacts) {
         results.push({
           email: contact.email,

@@ -84,6 +84,29 @@ describe('emailService', () => {
     expect(requests[0].payload.tracking_settings.subscription_tracking.enable).toBe(true);
   });
 
+  it('injects unsubscribe placeholder into local html and uses subscription tag tracking', () => {
+    const requests = service.buildBatchRequests({
+      contacts: [contacts[0]],
+      template: {
+        mode: 'local',
+        html: '<p>Ola {{name}}</p>',
+        text: '',
+        subject: ''
+      },
+      config: baseConfig,
+      campaignId: 'cmp-4',
+      batchIndex: 1
+    });
+
+    expect(requests[0].payload.tracking_settings.subscription_tracking.substitution_tag).toBe(
+      '[%unsubscribe_url%]'
+    );
+    expect(requests[0].payload.content[1].value).toContain('[%unsubscribe_url%]');
+    expect(requests[0].payload.content[1].value).toContain(
+      'clique aqui para cancelar a inscricao'
+    );
+  });
+
   it('rejects shared BCC mode when personalization is still enabled', () => {
     expect(() =>
       service.validateConfig(

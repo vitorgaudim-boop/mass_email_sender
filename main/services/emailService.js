@@ -11,7 +11,10 @@ import {
 import { extractTemplateVariables, renderLocalTemplate, summarizeTemplate } from './templateEngine.js';
 import {
   DEFAULT_SUBSCRIPTION_TRACKING_HTML,
-  DEFAULT_SUBSCRIPTION_TRACKING_TEXT
+  DEFAULT_SUBSCRIPTION_TRACKING_TEXT,
+  PREVIEW_UNSUBSCRIBE_URL,
+  SENDGRID_UNSUBSCRIBE_TAG,
+  UNSUBSCRIBE_URL_VARIABLE
 } from '../../shared/constants.js';
 
 function delay(ms) {
@@ -56,9 +59,81 @@ function parseAddressLists(config) {
   return { cc: cc.recipients, bcc: bcc.recipients };
 }
 
-function buildTrackingSettings(config) {
+function ensureHtmlSubscriptionLink(source, urlValue) {
+  const html = String(source || '').trim();
+
+  if (!html) {
+    return '';
+  }
+
+  const withUrl = html.includes(UNSUBSCRIBE_URL_VARIABLE)
+    ? html.replaceAll(UNSUBSCRIBE_URL_VARIABLE, urlValue)
+    : `${html}<p style="margin:16px 0 0;font-family:Arial,Helvetica,sans-serif;font-size:12px;line-height:1.6;color:#6f5f78;">Para deixar de receber estes emails, <a href="${urlValue}" style="color:#7b27c0;text-decoration:underline;">clique aqui para cancelar a inscricao</a>.</p>`;
+
+  return withUrl;
+}
+
+function ensureTextSubscriptionLink(source, urlValue) {
+  const text = String(source || '').trim();
+
+  if (!text) {
+    return '';
+  }
+
+  if (text.includes(UNSUBSCRIBE_URL_VARIABLE)) {
+    return text.replaceAll(UNSUBSCRIBE_URL_VARIABLE, urlValue);
+  }
+
+  return `${text}\n${urlValue}`;
+}
+
+export function buildSubscriptionTrackingContent(config, { preview = false } = {}) {
+  if (!config.enableSubscriptionTracking) {
+    return { html: '', text: '' };
+  }
+
+  const urlValue = preview ? PREVIEW_UNSUBSCRIBE_URL : SENDGRID_UNSUBSCRIBE_TAG;
+  const htmlSource = config.subscriptionTrackingHtml || DEFAULT_SUBSCRIPTION_TRACKING_HTML;
+  const textSource = config.subscriptionTrackingText || DEFAULT_SUBSCRIPTION_TRACKING_TEXT;
+
+  return {
+    html: ensureHtmlSubscriptionLink(htmlSource, urlValue),
+    text: ensureTextSubscriptionLink(textSource, urlValue)
+  };
+}
+
+function appendSubscriptionTracking(renderedContent, config) {
+  if (!config.enableSubscriptionTracking) {
+    return renderedContent;
+  }
+
+  const trackingContent = buildSubscriptionTrackingContent(config, { preview: false });
+  const nextHtml = renderedContent.html.includes('</body>')
+    ? renderedContent.html.replace('</body>', `${trackingContent.html}</body>`)
+    : `${renderedContent.html}${trackingContent.html}`;
+  const nextText = renderedContent.text
+    ? `${renderedContent.text}\n\n${trackingContent.text}`
+    : trackingContent.text;
+
+  return {
+    ...renderedContent,
+    html: nextHtml,
+    text: nextText
+  };
+}
+
+function buildTrackingSettings(config, { useSubstitutionTag = false } = {}) {
   if (!config.enableSubscriptionTracking) {
     return null;
+  }
+
+  if (useSubstitutionTag) {
+    return {
+      subscription_tracking: {
+        enable: true,
+        substitution_tag: SENDGRID_UNSUBSCRIBE_TAG
+      }
+    };
   }
 
   return {
@@ -83,7 +158,9 @@ function buildAsm(config) {
 
 function buildBaseMessage(config, template, renderedContent = null) {
   const headers = normalizeHeaderPairs(config.customHeaders);
-  const trackingSettings = buildTrackingSettings(config);
+  const trackingSettings = buildTrackingSettings(config, {
+    useSubstitutionTag: template.mode === 'local'
+  });
   const asm = buildAsm(config);
   const baseMessage = {
     from: {
@@ -156,11 +233,14 @@ function buildDynamicPersonalization(contact, config, ccList, bccList, campaignI
 }
 
 function buildRenderedMessageForContact(template, contact, config) {
-  return renderLocalTemplate({
-    template,
-    contact,
-    campaignConfig: config
-  });
+  return appendSubscriptionTracking(
+    renderLocalTemplate({
+      template,
+      contact,
+      campaignConfig: config
+    }),
+    config
+  );
 }
 
 function buildRequestUnit({ payload, contacts, requestStrategy, description }) {
@@ -217,8 +297,9 @@ function buildLocalBatchRequests({ contacts, template, config, ccList, bccList, 
     contact: { email: '', name: '', variables: {} },
     campaignConfig: config
   });
+  const renderedWithTracking = appendSubscriptionTracking(rendered, config);
   const payload = {
-    ...buildBaseMessage(config, template, rendered),
+    ...buildBaseMessage(config, template, renderedWithTracking),
     personalizations: contacts.map((contact) => ({
       to: [sanitizeAddress(contact)],
       ...(ccList.length ? { cc: ccList.map((recipient) => sanitizeAddress(recipient)) } : {}),
@@ -258,11 +339,14 @@ function buildDynamicBatchRequests({ contacts, template, config, ccList, bccList
 function buildSharedBccRequest({ contacts, template, config, ccList, bccList, campaignId, batchIndex }) {
   const rendered =
     template.mode === 'local'
-      ? renderLocalTemplate({
-          template,
-          contact: { email: '', name: '', variables: {} },
-          campaignConfig: config
-        })
+      ? appendSubscriptionTracking(
+          renderLocalTemplate({
+            template,
+            contact: { email: '', name: '', variables: {} },
+            campaignConfig: config
+          }),
+          config
+        )
       : null;
 
   const visibleTo = {
